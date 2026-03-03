@@ -1,0 +1,128 @@
+@import 'tailwindcss';
+@plugin '@tailwindcss/typography';
+
+@theme {
+  --color-surface: #0a0a12;
+  --color-surface-raised: #14102a;
+  --color-surface-overlay: #1e1838;
+  --color-accent: #00fff0;
+  --color-accent-hover: #67fffa;
+  --color-neon-pink: #ff00ff;
+  --color-neon-green: #39ff14;
+  --font-sans: var(--font-silkscreen), 'Courier New', monospace;
+  --font-mono: var(--font-silkscreen), 'Courier New', monospace;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+body {
+  @apply bg-surface text-cyan-100 antialiased;
+}
+
+::selection {
+  @apply bg-accent/30 text-white;
+}
+
+:focus-visible {
+  @apply outline-2 outline-offset-2 outline-accent;
+}
+
+/* Neon text glow utilities */
+.text-glow-cyan {
+  text-shadow: 0 0 7px #00fff0, 0 0 20px #00fff080, 0 0 40px #00fff040;
+}
+
+.text-glow-pink {
+  text-shadow: 0 0 7px #ff00ff, 0 0 20px #ff00ff80, 0 0 40px #ff00ff40;
+}
+
+.text-glow-green {
+  text-shadow: 0 0 7px #39ff14, 0 0 20px #39ff1480, 0 0 40px #39ff1440;
+}
+
+/* Neon border glow utilities */
+.border-glow-cyan {
+  box-shadow: 0 0 5px #00fff060, 0 0 15px #00fff030, inset 0 0 5px #00fff010;
+}
+
+.border-glow-pink {
+  box-shadow: 0 0 5px #ff00ff60, 0 0 15px #ff00ff30, inset 0 0 5px #ff00ff10;
+}
+
+/* CRT scanlines overlay */
+.scanlines::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.08) 2px,
+    rgba(0, 0, 0, 0.08) 4px
+  );
+}
+
+/* CRT vignette overlay */
+.crt-vignette::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 60%,
+    rgba(0, 0, 0, 0.4) 100%
+  );
+}
+
+/* Glitch text hover effect */
+.glitch-text {
+  position: relative;
+}
+
+.glitch-text:hover {
+  animation: glitch-jitter 0.3s ease-in-out;
+}
+
+@keyframes glitch-jitter {
+  0%, 100% { transform: translate(0); }
+  20% { transform: translate(-2px, 1px); }
+  40% { transform: translate(2px, -1px); }
+  60% { transform: translate(-1px, -1px); }
+  80% { transform: translate(1px, 1px); }
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .text-glow-cyan,
+  .text-glow-pink,
+  .text-glow-green {
+    text-shadow: none;
+  }
+
+  .border-glow-cyan,
+  .border-glow-pink {
+    box-shadow: none;
+  }
+
+  .scanlines::after,
+  .crt-vignette::before {
+    display: none;
+  }
+
+  .glitch-text:hover {
+    animation: none;
+  }
+}
