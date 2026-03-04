@@ -6,6 +6,7 @@ import { useFrame } from '@react-three/fiber';
 import type { Group } from 'three';
 import OrbitLine from './OrbitLine';
 import Moon from './Moon';
+import { useSquashStretch } from './helpers/useSquashStretch';
 import type { SceneNode } from '@/content/content-types';
 
 interface PlanetProps {
@@ -34,8 +35,16 @@ export default function Planet({
   onPositionUpdate,
 }: PlanetProps) {
   const [hovered, setHovered] = useState(false);
+  const [pressed, setPressed] = useState(false);
   const groupRef = useRef<Group>(null);
   const angleRef = useRef((index * Math.PI * 2) / 3);
+  const effectRef = useSquashStretch({
+    hovered: hovered || selected,
+    pressed,
+    spinSpeed: 3,
+    amplitude: 0.15,
+    frequency: 3,
+  });
 
   useFrame((_, delta) => {
     if (!groupRef.current) return;
@@ -55,7 +64,6 @@ export default function Planet({
     }
   });
 
-  const scale = hovered || selected ? 1.08 : 1;
   const tooltipHint =
     viewMode === 'system' ? 'Click to explore' : 'Click to open';
 
@@ -63,29 +71,48 @@ export default function Planet({
     <>
       <OrbitLine radius={node.orbit.orbitRadius} color={node.orbit.color} />
       <group ref={groupRef}>
-        <mesh
-          scale={scale}
-          onClick={(e) => {
-            e.stopPropagation();
-            onSelect(node);
-          }}
-          onPointerOver={(e) => {
-            e.stopPropagation();
-            setHovered(true);
-            document.body.style.cursor = 'pointer';
-          }}
-          onPointerOut={() => {
-            setHovered(false);
-            document.body.style.cursor = 'auto';
-          }}
-        >
-          <sphereGeometry args={[node.orbit.size, 24, 24]} />
-          <meshStandardMaterial
-            color={node.orbit.color}
-            emissive={node.orbit.color}
-            emissiveIntensity={hovered || selected ? 0.6 : 0.3}
-          />
-        </mesh>
+        {/* Spin on hover + squash-stretch on press — wraps both sphere and wireframe */}
+        <group ref={effectRef}>
+          <mesh
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelect(node);
+            }}
+            onPointerOver={(e) => {
+              e.stopPropagation();
+              setHovered(true);
+              document.body.style.cursor = 'pointer';
+            }}
+            onPointerOut={() => {
+              setHovered(false);
+              setPressed(false);
+              document.body.style.cursor = 'auto';
+            }}
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              setPressed(true);
+            }}
+            onPointerUp={() => setPressed(false)}
+          >
+            <sphereGeometry args={[node.orbit.size, 24, 24]} />
+            <meshStandardMaterial
+              color={node.orbit.color}
+              emissive={node.orbit.color}
+              emissiveIntensity={hovered || selected ? 0.6 : 0.3}
+            />
+          </mesh>
+
+          {/* Solid border outline for clickable affordance */}
+          <mesh>
+            <sphereGeometry args={[node.orbit.size * 1.06, 16, 16]} />
+            <meshBasicMaterial
+              color={node.orbit.color}
+              wireframe
+              transparent
+              opacity={hovered || selected ? 0.8 : 0.35}
+            />
+          </mesh>
+        </group>
 
         <Html
           position={[0, node.orbit.size + 0.8, 0]}
@@ -116,6 +143,7 @@ export default function Planet({
               selected={selectedId === moon.id}
               onSelect={onSelect}
               index={i}
+              totalMoons={node.children.length}
             />
           ))}
       </group>

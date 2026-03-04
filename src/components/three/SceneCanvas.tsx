@@ -25,11 +25,12 @@ export default function SceneCanvas({ sceneGraph }: SceneCanvasProps) {
 
   const selectedNode = state.selectedNode;
 
-  // In system view, clicking a planet zooms in directly (no panel).
-  // Clicking the sun still selects it to show a panel.
+  // In system view, clicking a planet with moons zooms in to show them.
+  // Planets without moons skip the zoom and select directly (show panel).
+  // Clicking the sun selects it to show a panel.
   const handleSelect = useCallback(
     (node: SceneNode) => {
-      if (state.mode === 'system' && node.type === 'planet') {
+      if (state.mode === 'system' && node.type === 'planet' && node.children.length > 0) {
         explorePlanet(node);
       } else {
         selectNode(node);
@@ -115,7 +116,7 @@ export default function SceneCanvas({ sceneGraph }: SceneCanvasProps) {
       </div>
 
       {/* ContextPanel — shown in planet view, or for sun in system view */}
-      {selectedNode && (state.mode === 'planet' || selectedNode.type === 'sun') && (
+      {selectedNode && (state.mode === 'planet' || selectedNode.type === 'sun' || (state.mode === 'system' && selectedNode.type === 'planet')) && (
         <ContextPanel
           node={selectedNode}
           onClose={closePanel}

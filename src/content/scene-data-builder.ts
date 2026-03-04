@@ -60,7 +60,7 @@ function buildMoonNode(
     type: 'moon',
     route: `/projects/${fm.slug}`,
     orbit: resolveOrbit(fm.orbit, index, {
-      orbitRadius: 1.5 + index * 0.8,
+      orbitRadius: 2 + index * 1.2,
       orbitSpeed: 0.12,
       size: 0.4,
     }),

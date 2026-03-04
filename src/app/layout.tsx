@@ -3,7 +3,6 @@ import { Silkscreen } from 'next/font/google';
 import '@/styles/globals.css';
 import SkipLink from '@/components/layout/SkipLink';
 import Header from '@/components/layout/Header';
-import Footer from '@/components/layout/Footer';
 import { getNavData } from '@/content/content-loader';
 
 const silkscreen = Silkscreen({
@@ -48,7 +47,6 @@ export default async function RootLayout({
         <main id="main-content" className="flex-1">
           {children}
         </main>
-        <Footer />
       </body>
     </html>
   );

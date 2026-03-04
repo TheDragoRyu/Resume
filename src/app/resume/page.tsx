@@ -1,9 +1,10 @@
 import type { Metadata } from 'next';
-import { getCategories } from '@/content/content-loader';
+import { getCategories, getIntro } from '@/content/content-loader';
 import Breadcrumb from '@/components/ui/Breadcrumb';
 import ResumeToc from '@/sections/resume/ResumeToc';
 import ResumeTocMobile from '@/sections/resume/ResumeTocMobile';
 import CategorySection from '@/sections/resume/CategorySection';
+import ResumeHeader from '@/sections/resume/ResumeHeader';
 
 export const metadata: Metadata = {
   title: 'Resume',
@@ -11,7 +12,7 @@ export const metadata: Metadata = {
 };
 
 export default async function ResumePage() {
-  const categories = await getCategories();
+  const [categories, intro] = await Promise.all([getCategories(), getIntro()]);
 
   const tocItems = categories.map((c) => ({
     slug: c.frontmatter.slug,
@@ -21,7 +22,11 @@ export default async function ResumePage() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-12">
       <Breadcrumb items={[{ label: 'Resume' }]} />
-      <h1 className="mb-12 text-4xl font-bold text-accent text-glow-cyan">Resume</h1>
+      <ResumeHeader
+        name={intro.frontmatter.title}
+        role={intro.frontmatter.role}
+        photo={intro.frontmatter.photo}
+      />
 
       <ResumeTocMobile items={tocItems} />
 

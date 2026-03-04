@@ -21,6 +21,16 @@ export default function CameraController({
 }: CameraControllerProps) {
   const controlsRef = useRef<CameraControlsImpl>(null);
 
+  // Disable scroll-wheel zoom so wheel events pass through to the page
+  useEffect(() => {
+    const controls = controlsRef.current;
+    if (!controls) return;
+
+    // ACTION.NONE = 0 — disables the wheel binding entirely
+    controls.mouseButtons.wheel = 0;
+    controls.touches.three = 0;
+  }, []);
+
   useEffect(() => {
     const controls = controlsRef.current;
     if (!controls) return;

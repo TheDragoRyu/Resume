@@ -20,6 +20,7 @@ export interface OrbitMetadata {
 export interface IntroFrontmatter extends BaseFrontmatter {
   type: 'intro';
   role?: string;
+  photo?: string;
   orbit?: OrbitMetadata;
 }
 

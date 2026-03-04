@@ -7,18 +7,24 @@ import * as THREE from 'three';
 interface OrbitLineProps {
   radius: number;
   color?: string;
+  /** Orbital inclination in radians — tilts the orbit ring */
+  inclination?: number;
 }
 
-export default function OrbitLine({ radius, color = '#00fff0' }: OrbitLineProps) {
+export default function OrbitLine({ radius, color = '#00fff0', inclination = 0 }: OrbitLineProps) {
   const points = useMemo(() => {
     const pts: THREE.Vector3[] = [];
     const segments = 128;
     for (let i = 0; i <= segments; i++) {
       const angle = (i / segments) * Math.PI * 2;
-      pts.push(new THREE.Vector3(Math.cos(angle) * radius, 0, Math.sin(angle) * radius));
+      const x = Math.cos(angle) * radius;
+      const flatZ = Math.sin(angle) * radius;
+      const y = flatZ * Math.sin(inclination);
+      const z = flatZ * Math.cos(inclination);
+      pts.push(new THREE.Vector3(x, y, z));
     }
     return pts;
-  }, [radius]);
+  }, [radius, inclination]);
 
   return (
     <Line

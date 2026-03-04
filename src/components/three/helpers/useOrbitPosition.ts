@@ -9,6 +9,8 @@ interface UseOrbitPositionOptions {
   speed: number;
   reducedMotion: boolean;
   initialAngle?: number;
+  /** Orbital inclination in radians — tilts the orbit plane */
+  inclination?: number;
 }
 
 export function useOrbitPosition({
@@ -16,6 +18,7 @@ export function useOrbitPosition({
   speed,
   reducedMotion,
   initialAngle = 0,
+  inclination = 0,
 }: UseOrbitPositionOptions) {
   const groupRef = useRef<Group>(null);
   const angleRef = useRef(initialAngle);
@@ -28,8 +31,11 @@ export function useOrbitPosition({
     }
 
     const x = Math.cos(angleRef.current) * radius;
-    const z = Math.sin(angleRef.current) * radius;
-    groupRef.current.position.set(x, 0, z);
+    const flatZ = Math.sin(angleRef.current) * radius;
+    // Tilt the orbit plane: rotate around X axis by inclination
+    const y = flatZ * Math.sin(inclination);
+    const z = flatZ * Math.cos(inclination);
+    groupRef.current.position.set(x, y, z);
   });
 
   return groupRef;

@@ -18,7 +18,7 @@ links:
 orbit:
   orbitRadius: 2
   orbitSpeed: 0.12
-  size: 0.5
+  size: 0.4
   color: "#ff80ff"
 ---
 
