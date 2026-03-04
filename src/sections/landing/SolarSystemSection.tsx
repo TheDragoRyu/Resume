@@ -2,6 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import type { SceneNode } from '@/content/content-types';
+import { useMediaQuery } from '@/components/three/helpers/useMediaQuery';
 
 const SceneCanvas = dynamic(() => import('@/components/three/SceneCanvas'), {
   ssr: false,
@@ -17,12 +18,19 @@ interface SolarSystemSectionProps {
 }
 
 export default function SolarSystemSection({ sceneGraph }: SolarSystemSectionProps) {
+  const isDesktop = useMediaQuery('(min-width: 768px)');
+  const isMobile = isDesktop === false;
+
+  // SSR/hydration: show placeholder until media query resolves (Gap 13)
+  if (isDesktop === null) {
+    return (
+      <section className="relative h-[50vh] min-h-[300px] w-full md:h-[70vh] md:min-h-[400px]" />
+    );
+  }
+
   return (
-    <section
-      className="relative hidden h-[60vh] min-h-[400px] w-full md:block md:h-[70vh]"
-      aria-hidden="true"
-    >
-      <SceneCanvas sceneGraph={sceneGraph} />
+    <section className="relative h-[50vh] min-h-[300px] w-full md:h-[70vh] md:min-h-[400px]">
+      <SceneCanvas sceneGraph={sceneGraph} isMobile={isMobile} />
     </section>
   );
 }

@@ -21,7 +21,8 @@ export default function ResumeHeader({ name, role, photo }: ResumeHeaderProps) {
         </div>
       )}
       <div>
-        <h1 className="text-4xl font-bold text-accent text-glow-cyan">{name}</h1>
+        <h1 className="text-4xl font-bold text-accent text-glow-cyan">Resume</h1>
+        <p className="mt-1 text-xl font-semibold text-cyan-100">{name}</p>
         {role && (
           <p className="mt-1 text-lg text-muted">{role}</p>
         )}

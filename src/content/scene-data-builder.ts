@@ -30,11 +30,14 @@ function resolveOrbit(
 
 function buildSunNode(intro: ContentItem<IntroFrontmatter>): SceneNode {
   const fm = intro.frontmatter;
+  const desc = fm.description
+    ? `${fm.description} · Navigate to learn more or get in touch.`
+    : 'Navigate to learn more or get in touch.';
   return {
     id: fm.id,
     slug: fm.slug,
     label: fm.title,
-    description: fm.description,
+    description: desc,
     type: 'sun',
     route: '/',
     orbit: {

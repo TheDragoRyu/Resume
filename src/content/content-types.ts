@@ -72,6 +72,8 @@ export interface NavSubItem {
 
 /** Navigation data with sub-items for Resume and Projects */
 export interface NavData {
+  siteTitle: string;
+  contactLabel: string;
   resumeSections: NavSubItem[];
   projects: NavSubItem[];
 }

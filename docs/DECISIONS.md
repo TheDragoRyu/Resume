@@ -110,6 +110,34 @@
 - CRT/scanline overlays add fixed-position pseudo-elements, but use `pointer-events: none` and are purely decorative.
 - Starfield adds ~1500 particles to the 3D scene but uses a single `<points>` geometry for minimal draw calls.
 
+## 2026-03-04: Design Pillars Audit — Compliance Fixes
+
+**Decision:** Fix 12 violations found during an audit against `design-pillars.md`, covering Pillars 2, 7, 8, and 9.
+
+**Changes:**
+
+1. **Touch targets ≥44px (Pillar 9).** Added `min-h-[44px] min-w-[44px]` to icon-only buttons (Header mobile menu, chevron toggle, ContextPanel close) and `min-h-[44px]` to text buttons (ContextPanel primary/back, SceneCanvas back/performance, HeroSection CTAs). Changed mobile nav link padding from `py-2` → `py-3` and sub-nav from `py-1.5` → `py-2.5`.
+
+2. **Landing page metadata (Pillar 8).** Added `generateMetadata` to `src/app/page.tsx` that reads intro frontmatter to produce page-specific `<title>` and `<meta description>`.
+
+3. **Desktop dropdown arrow key navigation (Pillar 7).** Added `onKeyDown` handler to `DesktopDropdown` supporting `ArrowDown`, `ArrowUp`, `Home`, `End`, and `Escape` with roving tabindex on dropdown links. Dropdown items now have `role="menu"` / `role="menuitem"`.
+
+4. **3D canvas gated by media query (Pillar 9).** `SolarSystemSection` now uses a `useMediaQuery('(min-width: 768px)')` hook. On mobile, the component returns `null` instead of mounting a hidden WebGL context.
+
+5. **Content-driven nav labels (Pillar 2).** Extended `NavData` with `siteTitle` (from intro frontmatter) and `contactLabel` (from contact page frontmatter). Header brand text and contact nav label are now content-driven. Footer accepts `siteTitle` as a prop.
+
+6. **Footer rendered in layout.** Imported `Footer` in `layout.tsx` and rendered it after `<main>`, passing `navData.siteTitle`.
+
+7. **Removed hardcoded fallback email (Pillar 2).** Contact page now uses `getPageOrThrow('contact')` instead of a fallback branch with `hello@example.com`. Build fails if the contact page is missing.
+
+8. **Hero CTA touch targets (Pillar 9).** Added `min-h-[44px]` to all three HeroSection CTA buttons.
+
+**Rationale:**
+- Each fix addresses a specific, measurable violation of the design pillars.
+- Touch target fixes follow WCAG 2.5.5 (≥44×44px).
+- Arrow key navigation follows WAI-ARIA Menu pattern.
+- Media query guard prevents unnecessary WebGL context on mobile, saving memory and GPU.
+
 ## 2026-03-03: 2-State Solar System Navigation
 
 **Decision:** Implement two explicit camera/UI states — System View (Sun + Planets) and Planet View (focused Planet + its Moons) — using a `useReducer` state machine with hash-based deep linking.
@@ -136,3 +164,79 @@
 - `CameraControls` adds the `camera-controls` library (already a transitive dep of drei, ~8KB gzipped).
 - Hash-based routing is simpler than URL path routing but less SEO-friendly (acceptable since 3D scene is `aria-hidden` and not indexed).
 - Focused planet freezes its orbit to provide a stable camera target — slight departure from the "living system" feel, but necessary for usability.
+
+## 2026-03-04: UX Audit — 26-Gap Fix
+
+**Decision:** Address all 26 gaps found during a project-wide UX audit against `ux-standards.md`.
+
+**Changes:**
+
+1. **Mobile 3D support (Gap 1).** Removed desktop-only gate from `SolarSystemSection`. 3D scene renders at all viewports (`h-[50vh] md:h-[70vh]`). On mobile, tap-select flow shows ContextPanel with "Explore" button instead of auto-zooming into planets.
+
+2. **Invisible hit colliders (Gap 2).** Added transparent `<mesh>` with `visible={false}` material and enlarged sphere (`Math.max(size * 1.5, 0.8)`) to Planet, Moon, and Sun. Pointer handlers moved to hit mesh; visible mesh is now inert.
+
+3. **Keyboard access to 3D (Gap 3).** New `SceneKeyboardNav` component — a DOM overlay with a `listbox` of scene nodes. Uses roving tabindex with arrow keys. Visually hidden (`sr-only`) until focused, then appears as a floating panel. `aria-hidden="true"` moved from `<section>` to `<Canvas>` so overlay remains accessible.
+
+4. **Tag filtering on /projects (Gap 4).** New `ProjectFilterGrid` client component with tag toggle buttons, clear-all, and filtered grid with empty state message.
+
+5. **ContextPanel focus trap (Gap 5).** Added `aria-modal="true"` and Tab/Shift+Tab wrapping `useEffect` that also handles Escape.
+
+6. **Focus rings on overlay buttons (Gap 6).** Added `focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2` to all buttons in ContextPanel and SceneCanvas.
+
+7. **Onboarding pulse + hint (Gap 7).** New `useOnboardingHint` hook (sessionStorage-backed). Planet index 0 and 1 oscillate emissive intensity via sine wave in `useFrame`. Dismissible text hint overlay in SceneCanvas.
+
+8. **"Explore" label in System View (Gap 8).** `getPrimaryAction` returns `'Explore'` for planets with moons in system view.
+
+9. **Contact in Sun node (Gap 9).** ContextPanel gains `secondaryAction` prop. SceneCanvas passes `{ label: 'Contact', handler: router.push('/contact') }` when sun is selected. Sun description appended with contact prompt.
+
+10. **Resume H1 (Gap 10).** Changed `<h1>` from name to "Resume", name demoted to `<p>` subheading.
+
+11. **Heading hierarchy (Gap 11).** ProjectCard `<h3>` → `<h2>`.
+
+12. **OG images (Gap 12).** Created `public/og-default.png` (1200×630). Added `images` to openGraph in layout.tsx and project [slug] page.
+
+13. **useMediaQuery SSR flash (Gap 13).** Changed initial state from `false` to `null`. Return type `boolean | null`. SolarSystemSection shows height-matched placeholder when `null`.
+
+14. **WebGL fallback nav (Gap 14).** Replaced bare text fallback with a nav card grid linking to all planet destinations.
+
+15. **Description contrast (Gap 15).** `text-cyan-100/50` → `text-cyan-100/70` in ProjectCard and ContextPanel.
+
+16. **Loading feedback (Gap 16).** ContextPanel shows spinner + disabled button when `navigating` prop is true and label is "Open".
+
+17. **Performance mode particle reduction (Gap 17).** Starfield uses `Math.min(500, count)` when `performanceMode` is active.
+
+18. **Cross-links from resume to projects (Gap 18).** Added markdown links in `experience.md` referencing project slugs.
+
+19. **Active TOC state (Gap 19).** ResumeToc uses `IntersectionObserver` to track visible sections and highlight the active link with `text-accent font-semibold`.
+
+20. **useSquashStretch reduced motion (Gap 20).** Added `reducedMotion` option. When true, skips all animation in `useFrame` and resets scale to 1.
+
+21. **Opacity fade on ContextPanel (Gap 21).** Panel mounts with `opacity-0`, transitions to `opacity-100` via `requestAnimationFrame` + state flip.
+
+22. **404 H1 (Gap 22).** "404" made decorative `<p aria-hidden>`, added `<h1>Page Not Found</h1>`.
+
+23. **Contact metadata (Gap 23).** Expanded description to a proper sentence.
+
+24. **Tooltip text (Gap 24).** Already correct — no change needed.
+
+25. **Breadcrumb in 3D overlay (Gap 25).** Replaced "← Back to System" button with `System ▸ {planet.label}` breadcrumb nav where "System" is clickable.
+
+26. **ResumeToc 'use client' (Gap 26).** Resolved by Gap 19 (IntersectionObserver requires client).
+
+**New files:**
+- `src/components/three/SceneKeyboardNav.tsx`
+- `src/components/three/helpers/useOnboardingHint.ts`
+- `src/sections/projects/ProjectFilterGrid.tsx`
+- `public/og-default.png`
+
+**Rationale:**
+- Each gap maps to a specific UX standard or accessibility requirement.
+- Mobile 3D ensures the hero section is not empty on phones (~60% of traffic).
+- Hit colliders solve the precision problem of clicking small 3D spheres.
+- Keyboard nav and focus traps meet WCAG 2.1 AA requirements.
+- Tag filtering and active TOC improve content discoverability.
+
+**Trade-offs:**
+- Mobile 3D uses a tap-then-action pattern (tap to select, then tap "Explore"/"Open") which adds one extra interaction step but avoids accidental navigation.
+- Hit colliders add invisible geometry; performance impact is negligible (simple transparent spheres).
+- `sessionStorage` for onboarding hint means hint reappears per tab — acceptable for a portfolio site.

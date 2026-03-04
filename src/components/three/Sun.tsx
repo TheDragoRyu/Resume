@@ -25,13 +25,14 @@ export default function Sun({ size, color, label, selected, onSelect, reducedMot
   });
 
   const scale = hovered || selected ? 1.05 : 1;
+  const hitRadius = Math.max(size * 1.5, 0.8);
 
   return (
     <group>
       <pointLight color={color} intensity={3} distance={50} />
+
+      {/* Invisible hit collider (Gap 2) */}
       <mesh
-        ref={meshRef}
-        scale={scale}
         onClick={(e) => {
           e.stopPropagation();
           onSelect();
@@ -45,6 +46,15 @@ export default function Sun({ size, color, label, selected, onSelect, reducedMot
           setHovered(false);
           document.body.style.cursor = 'auto';
         }}
+      >
+        <sphereGeometry args={[hitRadius, 16, 16]} />
+        <meshBasicMaterial visible={false} />
+      </mesh>
+
+      {/* Visible sun mesh */}
+      <mesh
+        ref={meshRef}
+        scale={scale}
       >
         <sphereGeometry args={[size, 32, 32]} />
         <meshStandardMaterial

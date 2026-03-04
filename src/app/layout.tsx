@@ -3,6 +3,7 @@ import { Silkscreen } from 'next/font/google';
 import '@/styles/globals.css';
 import SkipLink from '@/components/layout/SkipLink';
 import Header from '@/components/layout/Header';
+import Footer from '@/components/layout/Footer';
 import { getNavData } from '@/content/content-loader';
 
 const silkscreen = Silkscreen({
@@ -26,6 +27,7 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'en_US',
     siteName: 'Portfolio',
+    images: [{ url: '/og-default.png', width: 1200, height: 630, alt: 'Portfolio' }],
   },
   twitter: {
     card: 'summary_large_image',
@@ -47,6 +49,7 @@ export default async function RootLayout({
         <main id="main-content" className="flex-1">
           {children}
         </main>
+        <Footer siteTitle={navData.siteTitle} />
       </body>
     </html>
   );

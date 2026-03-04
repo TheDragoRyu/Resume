@@ -101,12 +101,16 @@ export async function getProjectsByCategory(
 
 /** Get navigation data with sub-items for Resume and Projects */
 export async function getNavData(): Promise<NavData> {
-  const [categories, projects] = await Promise.all([
+  const [intro, categories, projects, contactPage] = await Promise.all([
+    getIntro(),
     getCategories(),
     getProjects(),
+    getPage('contact'),
   ]);
 
   return {
+    siteTitle: intro.frontmatter.title,
+    contactLabel: contactPage?.frontmatter.title ?? 'Contact',
     resumeSections: categories.map((c) => ({
       href: `/resume#${c.frontmatter.slug}`,
       label: c.frontmatter.title,
@@ -123,4 +127,15 @@ export async function getPage(
   slug: string
 ): Promise<ContentItem<PageFrontmatter> | undefined> {
   return getContentBySlug<PageFrontmatter>(slug);
+}
+
+/** Get a standalone page by slug, throwing if not found */
+export async function getPageOrThrow(
+  slug: string
+): Promise<ContentItem<PageFrontmatter>> {
+  const page = await getPage(slug);
+  if (!page) {
+    throw new Error(`Required page "${slug}" not found in src/data/pages/`);
+  }
+  return page;
 }

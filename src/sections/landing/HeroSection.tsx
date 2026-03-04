@@ -18,19 +18,19 @@ export default function HeroSection({ name, role, description }: HeroSectionProp
       <div className="mt-8 flex flex-wrap justify-center gap-4">
         <Link
           href="/resume"
-          className="rounded-lg bg-neon-pink px-6 py-3 font-bold text-black transition-colors hover:bg-neon-pink/80"
+          className="rounded-lg bg-neon-pink px-6 py-3 min-h-[44px] font-bold text-black transition-colors hover:bg-neon-pink/80"
         >
           Resume
         </Link>
         <Link
           href="/projects"
-          className="rounded-lg border border-accent/30 px-6 py-3 font-medium text-accent transition-colors hover:border-accent/60 hover:bg-accent/5"
+          className="rounded-lg border border-accent/30 px-6 py-3 min-h-[44px] font-medium text-accent transition-colors hover:border-accent/60 hover:bg-accent/5"
         >
           Projects
         </Link>
         <Link
           href="/contact"
-          className="rounded-lg border border-accent/30 px-6 py-3 font-medium text-accent transition-colors hover:border-accent/60 hover:bg-accent/5"
+          className="rounded-lg border border-accent/30 px-6 py-3 min-h-[44px] font-medium text-accent transition-colors hover:border-accent/60 hover:bg-accent/5"
         >
           Contact
         </Link>

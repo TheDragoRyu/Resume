@@ -14,6 +14,7 @@ interface SolarSystemProps {
   onSelect: (node: SceneNode) => void;
   reducedMotion: boolean;
   performanceMode?: boolean;
+  showPulse?: boolean;
 }
 
 export default function SolarSystem({
@@ -22,6 +23,7 @@ export default function SolarSystem({
   onSelect,
   reducedMotion,
   performanceMode = false,
+  showPulse = false,
 }: SolarSystemProps) {
   const viewMode = state.mode;
   const focusedPlanetId =
@@ -107,6 +109,7 @@ export default function SolarSystem({
             viewMode={viewMode}
             isFocused={isFocused}
             showMoons={isFocused && viewMode === 'planet'}
+            showPulse={showPulse && viewMode === 'system'}
             onPositionUpdate={isFocused ? handlePositionUpdate : undefined}
           />
         );

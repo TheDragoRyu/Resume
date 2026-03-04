@@ -32,6 +32,7 @@ export default function Moon({
     spinSpeed: 4,
     amplitude: 0.18,
     frequency: 3.5,
+    reducedMotion,
   });
   const groupRef = useOrbitPosition({
     radius: node.orbit.orbitRadius,
@@ -40,6 +41,8 @@ export default function Moon({
     initialAngle: (index * Math.PI * 2) / Math.max(totalMoons, 1),
   });
 
+  const hitRadius = Math.max(node.orbit.size * 1.5, 0.8);
+
   return (
     <>
       <OrbitLine
@@ -47,29 +50,35 @@ export default function Moon({
         color={node.orbit.color}
       />
       <group ref={groupRef}>
+        {/* Invisible hit collider (Gap 2) */}
+        <mesh
+          onClick={(e) => {
+            e.stopPropagation();
+            onSelect(node);
+          }}
+          onPointerOver={(e) => {
+            e.stopPropagation();
+            setHovered(true);
+            document.body.style.cursor = 'pointer';
+          }}
+          onPointerOut={() => {
+            setHovered(false);
+            setPressed(false);
+            document.body.style.cursor = 'auto';
+          }}
+          onPointerDown={(e) => {
+            e.stopPropagation();
+            setPressed(true);
+          }}
+          onPointerUp={() => setPressed(false)}
+        >
+          <sphereGeometry args={[hitRadius, 12, 12]} />
+          <meshBasicMaterial visible={false} />
+        </mesh>
+
         {/* Spin on hover + squash-stretch on press — wraps both sphere and wireframe */}
         <group ref={effectRef}>
-          <mesh
-            onClick={(e) => {
-              e.stopPropagation();
-              onSelect(node);
-            }}
-            onPointerOver={(e) => {
-              e.stopPropagation();
-              setHovered(true);
-              document.body.style.cursor = 'pointer';
-            }}
-            onPointerOut={() => {
-              setHovered(false);
-              setPressed(false);
-              document.body.style.cursor = 'auto';
-            }}
-            onPointerDown={(e) => {
-              e.stopPropagation();
-              setPressed(true);
-            }}
-            onPointerUp={() => setPressed(false)}
-          >
+          <mesh>
             <sphereGeometry args={[node.orbit.size, 16, 16]} />
             <meshStandardMaterial
               color={node.orbit.color}

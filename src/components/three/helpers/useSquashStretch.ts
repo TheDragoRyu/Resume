@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import type { Group } from 'three';
+import * as THREE from 'three';
 
 interface SquashStretchOptions {
   /** Whether hover spin is active */
@@ -15,6 +16,8 @@ interface SquashStretchOptions {
   frequency?: number;
   /** Lerp speed for transitions */
   lerpSpeed?: number;
+  /** When true, skip all animation */
+  reducedMotion?: boolean;
 }
 
 /**
@@ -28,6 +31,7 @@ export function useSquashStretch({
   amplitude = 0.12,
   frequency = 2.5,
   lerpSpeed = 8,
+  reducedMotion = false,
 }: SquashStretchOptions) {
   const groupRef = useRef<Group>(null);
   const spinIntensityRef = useRef(0);
@@ -36,6 +40,12 @@ export function useSquashStretch({
 
   useFrame((_, delta) => {
     if (!groupRef.current) return;
+
+    // Gap 20: Skip all animation when reduced motion is on
+    if (reducedMotion) {
+      groupRef.current.scale.set(1, 1, 1);
+      return;
+    }
 
     // Smoothly ramp spin intensity for hover
     const spinTarget = hovered ? 1 : 0;
@@ -69,6 +79,3 @@ export function useSquashStretch({
 
   return groupRef;
 }
-
-// Import needed for the Vector3-like type in lerp
-import * as THREE from 'three';

@@ -17,17 +17,17 @@ orbit:
 **Feb 2026 – Present**
 
 - Lead and own multiple features in LILA Black
-- Implemented the Game's FTUE feature from start to finish
+- Implemented the Game's FTUE feature from start to finish — see [Project Alpha](/projects/project-alpha)
 - Setup a Custom FTUE Editor for faster iterations on the FTUE
 
 ## Unity Engineer — LILA Games
 **Apr 2024 – Jan 2026**
 
-- Built many of LILA Black's meta features like Clan, and House Customization.
+- Built many of LILA Black's meta features like Clan, and House Customization — see [Project Beta](/projects/project-beta)
 - Help Implement combat features like Patrol Commander
 
 ## Junior Developer — AgencyX
 **Aug 2018 – May 2020**
 
 - Developed responsive web applications for clients across e-commerce and media.
-- Implemented CI/CD pipelines reducing deployment time from hours to minutes.
+- Implemented CI/CD pipelines reducing deployment time from hours to minutes — see [Project Gamma](/projects/project-gamma).

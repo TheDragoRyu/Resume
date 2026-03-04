@@ -19,9 +19,11 @@ export default function Starfield({
 }: StarfieldProps) {
   const groupRef = useRef<THREE.Group>(null);
 
+  const effectiveCount = performanceMode ? Math.min(500, count) : count;
+
   const { positions, colors } = useMemo(() => {
-    const pos = new Float32Array(count * 3);
-    const col = new Float32Array(count * 3);
+    const pos = new Float32Array(effectiveCount * 3);
+    const col = new Float32Array(effectiveCount * 3);
 
     const palette = [
       [0, 1, 0.94],       // cyan #00fff0
@@ -31,7 +33,7 @@ export default function Starfield({
       [1, 1, 1],           // white (more common)
     ];
 
-    for (let i = 0; i < count; i++) {
+    for (let i = 0; i < effectiveCount; i++) {
       const theta = Math.random() * Math.PI * 2;
       const phi = Math.acos(2 * Math.random() - 1);
       const r = radius * (0.5 + Math.random() * 0.5);
@@ -47,7 +49,7 @@ export default function Starfield({
     }
 
     return { positions: pos, colors: col };
-  }, [count, radius]);
+  }, [effectiveCount, radius]);
 
   useFrame(() => {
     if (groupRef.current && !reducedMotion && !performanceMode) {

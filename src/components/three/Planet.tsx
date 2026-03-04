@@ -19,6 +19,7 @@ interface PlanetProps {
   viewMode: 'system' | 'planet';
   isFocused: boolean;
   showMoons: boolean;
+  showPulse?: boolean;
   onPositionUpdate?: (pos: [number, number, number]) => void;
 }
 
@@ -32,18 +33,21 @@ export default function Planet({
   viewMode,
   isFocused,
   showMoons,
+  showPulse,
   onPositionUpdate,
 }: PlanetProps) {
   const [hovered, setHovered] = useState(false);
   const [pressed, setPressed] = useState(false);
   const groupRef = useRef<Group>(null);
   const angleRef = useRef((index * Math.PI * 2) / 3);
+  const pulseRef = useRef(0);
   const effectRef = useSquashStretch({
     hovered: hovered || selected,
     pressed,
     spinSpeed: 3,
     amplitude: 0.15,
     frequency: 3,
+    reducedMotion,
   });
 
   useFrame((_, delta) => {
@@ -58,47 +62,64 @@ export default function Planet({
     const z = Math.sin(angleRef.current) * node.orbit.orbitRadius;
     groupRef.current.position.set(x, 0, z);
 
+    // Onboarding pulse (Gap 7) — only on first two planets
+    if (showPulse && (index === 0 || index === 1)) {
+      pulseRef.current += delta;
+    }
+
     // Report world position for camera targeting
     if (onPositionUpdate) {
       onPositionUpdate([x, 0, z]);
     }
   });
 
+  const pulseIntensity = showPulse && (index === 0 || index === 1)
+    ? 0.3 + Math.sin(pulseRef.current * 3) * 0.2
+    : 0;
+
   const tooltipHint =
     viewMode === 'system' ? 'Click to explore' : 'Click to open';
+
+  const hitRadius = Math.max(node.orbit.size * 1.5, 0.8);
 
   return (
     <>
       <OrbitLine radius={node.orbit.orbitRadius} color={node.orbit.color} />
       <group ref={groupRef}>
+        {/* Invisible hit collider (Gap 2) */}
+        <mesh
+          onClick={(e) => {
+            e.stopPropagation();
+            onSelect(node);
+          }}
+          onPointerOver={(e) => {
+            e.stopPropagation();
+            setHovered(true);
+            document.body.style.cursor = 'pointer';
+          }}
+          onPointerOut={() => {
+            setHovered(false);
+            setPressed(false);
+            document.body.style.cursor = 'auto';
+          }}
+          onPointerDown={(e) => {
+            e.stopPropagation();
+            setPressed(true);
+          }}
+          onPointerUp={() => setPressed(false)}
+        >
+          <sphereGeometry args={[hitRadius, 16, 16]} />
+          <meshBasicMaterial visible={false} />
+        </mesh>
+
         {/* Spin on hover + squash-stretch on press — wraps both sphere and wireframe */}
         <group ref={effectRef}>
-          <mesh
-            onClick={(e) => {
-              e.stopPropagation();
-              onSelect(node);
-            }}
-            onPointerOver={(e) => {
-              e.stopPropagation();
-              setHovered(true);
-              document.body.style.cursor = 'pointer';
-            }}
-            onPointerOut={() => {
-              setHovered(false);
-              setPressed(false);
-              document.body.style.cursor = 'auto';
-            }}
-            onPointerDown={(e) => {
-              e.stopPropagation();
-              setPressed(true);
-            }}
-            onPointerUp={() => setPressed(false)}
-          >
+          <mesh>
             <sphereGeometry args={[node.orbit.size, 24, 24]} />
             <meshStandardMaterial
               color={node.orbit.color}
               emissive={node.orbit.color}
-              emissiveIntensity={hovered || selected ? 0.6 : 0.3}
+              emissiveIntensity={(hovered || selected ? 0.6 : 0.3) + pulseIntensity}
             />
           </mesh>
 

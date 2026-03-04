@@ -22,18 +22,18 @@ export default function ProjectCard({
       }`}
     >
       <div className="flex items-start justify-between gap-2">
-        <h3 className="text-lg font-semibold text-cyan-100 group-hover:text-accent transition-colors">
+        <h2 className="text-lg font-semibold text-cyan-100 group-hover:text-accent transition-colors">
           <Link href={`/projects/${slug}`} className="after:absolute after:inset-0 relative">
             {title}
           </Link>
-        </h3>
+        </h2>
         {featured && (
           <span className="shrink-0 rounded-full bg-neon-pink/20 px-2 py-0.5 text-xs font-medium text-neon-pink">
             Featured
           </span>
         )}
       </div>
-      <p className="mt-2 text-sm text-cyan-100/50 line-clamp-2">{description}</p>
+      <p className="mt-2 text-sm text-cyan-100/70 line-clamp-2">{description}</p>
       {tags.length > 0 && (
         <div className="mt-4 flex flex-wrap gap-2">
           {tags.map((tag) => (
