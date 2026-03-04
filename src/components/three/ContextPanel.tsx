@@ -6,10 +6,18 @@ import type { SceneNode } from '@/content/content-types';
 interface ContextPanelProps {
   node: SceneNode;
   onClose: () => void;
-  onOpen: () => void;
+  onPrimary: () => void;
+  primaryLabel: string;
+  onBack?: () => void;
 }
 
-export default function ContextPanel({ node, onClose, onOpen }: ContextPanelProps) {
+export default function ContextPanel({
+  node,
+  onClose,
+  onPrimary,
+  primaryLabel,
+  onBack,
+}: ContextPanelProps) {
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -50,11 +58,19 @@ export default function ContextPanel({ node, onClose, onOpen }: ContextPanelProp
         </button>
       </div>
       <button
-        onClick={onOpen}
+        onClick={onPrimary}
         className="mt-3 w-full rounded-lg bg-accent px-4 py-2 text-sm font-bold text-black transition-colors hover:bg-accent-hover"
       >
-        Open
+        {primaryLabel}
       </button>
+      {onBack && (
+        <button
+          onClick={onBack}
+          className="mt-2 w-full rounded-lg border border-accent/30 px-4 py-2 text-sm text-cyan-100/70 transition-colors hover:border-accent/60 hover:text-accent"
+        >
+          ← Back to System
+        </button>
+      )}
     </div>
   );
 }

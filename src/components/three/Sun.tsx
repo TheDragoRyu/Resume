@@ -11,14 +11,15 @@ interface SunProps {
   label: string;
   selected: boolean;
   onSelect: () => void;
+  reducedMotion: boolean;
 }
 
-export default function Sun({ size, color, label, selected, onSelect }: SunProps) {
+export default function Sun({ size, color, label, selected, onSelect, reducedMotion }: SunProps) {
   const meshRef = useRef<Mesh>(null);
   const [hovered, setHovered] = useState(false);
 
   useFrame(() => {
-    if (meshRef.current) {
+    if (meshRef.current && !reducedMotion) {
       meshRef.current.rotation.y += 0.002;
     }
   });

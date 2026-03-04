@@ -16,7 +16,7 @@ links:
   github: https://github.com/example/project-gamma
 orbit:
   orbitRadius: 3
-  orbitSpeed: 0.35
+  orbitSpeed: 0.09
   size: 0.4
   color: "#90ff80"
 ---

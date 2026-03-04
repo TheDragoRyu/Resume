@@ -8,7 +8,7 @@ description: Professional experience and career history.
 icon: briefcase
 orbit:
   orbitRadius: 6
-  orbitSpeed: 0.3
+  orbitSpeed: 0.08
   size: 1.2
   color: "#ff00ff"
 ---

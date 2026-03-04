@@ -17,7 +17,7 @@ links:
   demo: https://project-alpha.example.com
 orbit:
   orbitRadius: 2
-  orbitSpeed: 0.5
+  orbitSpeed: 0.12
   size: 0.5
   color: "#ff80ff"
 ---

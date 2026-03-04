@@ -109,3 +109,30 @@
 - Silkscreen is less readable than Inter for dense body text, but acceptable for a portfolio with short content blocks.
 - CRT/scanline overlays add fixed-position pseudo-elements, but use `pointer-events: none` and are purely decorative.
 - Starfield adds ~1500 particles to the 3D scene but uses a single `<points>` geometry for minimal draw calls.
+
+## 2026-03-03: 2-State Solar System Navigation
+
+**Decision:** Implement two explicit camera/UI states — System View (Sun + Planets) and Planet View (focused Planet + its Moons) — using a `useReducer` state machine with hash-based deep linking.
+
+**Changes:**
+
+1. **State machine (`useSceneNavigation`):** Discriminated union types (`SystemViewState` / `PlanetViewState`) with a reducer handling `SELECT_NODE`, `EXPLORE_PLANET`, `BACK_TO_SYSTEM`, `CLOSE_PANEL`, and `SYNC_HASH` actions. This replaces the previous flat `useState<SceneNode | null>`.
+
+2. **CameraControls replacing OrbitControls:** drei's `CameraControls` (backed by the `camera-controls` library) replaces `OrbitControls` to enable animated `setLookAt` transitions between system overview and planet close-up positions. Transitions respect `prefers-reduced-motion` (instant jump when enabled).
+
+3. **Hash-based deep linking:** URL hash `#planet/<slug>` encodes planet view state. Supports browser back/forward via `popstate` listener. Compatible with static export (no server-side routing needed).
+
+4. **Conditional rendering by view mode:** In Planet View, sibling planets remain mounted but only the focused planet is rendered. Sun is hidden. Moons are only rendered when their parent planet is focused. This keeps the scene clean and camera-focused.
+
+5. **Dynamic ContextPanel actions:** Panel primary button shows "Explore" for planets in System View (triggers zoom-in) and "Open" for navigation in Planet View. Optional "Back to System" secondary button appears in Planet View.
+
+**Rationale:**
+- The solar system metaphor (planets = categories, moons = projects) requires spatial hierarchy — users should "enter" a planet to discover its projects.
+- A flat view showing all objects simultaneously dilutes the metaphor and creates visual clutter.
+- Hash-based state preserves static export compatibility while enabling shareable deep links.
+- `useReducer` with discriminated unions provides type-safe, predictable state transitions.
+
+**Trade-offs:**
+- `CameraControls` adds the `camera-controls` library (already a transitive dep of drei, ~8KB gzipped).
+- Hash-based routing is simpler than URL path routing but less SEO-friendly (acceptable since 3D scene is `aria-hidden` and not indexed).
+- Focused planet freezes its orbit to provide a stable camera target — slight departure from the "living system" feel, but necessary for usability.

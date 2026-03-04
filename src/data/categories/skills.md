@@ -8,7 +8,7 @@ description: Technical skills and areas of expertise.
 icon: code
 orbit:
   orbitRadius: 10
-  orbitSpeed: 0.2
+  orbitSpeed: 0.06
   size: 1.0
   color: "#39ff14"
 ---
