@@ -8,7 +8,7 @@ description: Academic background and certifications.
 icon: graduation-cap
 orbit:
   orbitRadius: 14
-  orbitSpeed: 0.15
+  orbitSpeed: 0.04
   size: 0.9
   color: "#00fff0"
 ---

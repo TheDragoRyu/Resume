@@ -10,7 +10,7 @@ import { getCategories, getIntro, getProjectsByCategory } from './content-loader
 
 const DEFAULT_ORBIT: Required<OrbitMetadata> = {
   orbitRadius: 8,
-  orbitSpeed: 0.2,
+  orbitSpeed: 0.05,
   size: 1.0,
   color: '#888888',
 };
@@ -22,7 +22,7 @@ function resolveOrbit(
 ): Required<OrbitMetadata> {
   return {
     orbitRadius: partial?.orbitRadius ?? defaults.orbitRadius ?? 4 + index * 4,
-    orbitSpeed: partial?.orbitSpeed ?? defaults.orbitSpeed ?? 0.3 - index * 0.05,
+    orbitSpeed: partial?.orbitSpeed ?? defaults.orbitSpeed ?? 0.08 - index * 0.01,
     size: partial?.size ?? defaults.size ?? 1.0,
     color: partial?.color ?? defaults.color ?? DEFAULT_ORBIT.color,
   };
@@ -61,7 +61,7 @@ function buildMoonNode(
     route: `/projects/${fm.slug}`,
     orbit: resolveOrbit(fm.orbit, index, {
       orbitRadius: 1.5 + index * 0.8,
-      orbitSpeed: 0.5,
+      orbitSpeed: 0.12,
       size: 0.4,
     }),
     children: [],

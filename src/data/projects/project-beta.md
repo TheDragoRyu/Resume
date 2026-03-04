@@ -16,7 +16,7 @@ links:
   github: https://github.com/example/project-beta
 orbit:
   orbitRadius: 2.5
-  orbitSpeed: 0.4
+  orbitSpeed: 0.1
   size: 0.45
   color: "#80ffee"
 ---
