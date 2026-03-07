@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import posthog from 'posthog-js';
 
 interface TocItem {
   slug: string;
@@ -36,7 +37,10 @@ export default function ResumeTocMobile({ items }: ResumeTocMobileProps) {
             <li key={slug}>
               <a
                 href={`#${slug}`}
-                onClick={() => setOpen(false)}
+                onClick={() => {
+                  posthog.capture('resume_toc_clicked', { section: slug, device: 'mobile' });
+                  setOpen(false);
+                }}
                 className="block py-1.5 text-sm text-cyan-100/60 transition-colors hover:text-accent"
               >
                 {title}

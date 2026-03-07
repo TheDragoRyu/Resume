@@ -4,6 +4,7 @@ import { useCallback, useState, useMemo } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import posthog from 'posthog-js';
 import SolarSystem from './SolarSystem';
 import ContextPanel from './ContextPanel';
 import SceneKeyboardNav from './SceneKeyboardNav';
@@ -38,9 +39,11 @@ export default function SceneCanvas({ sceneGraph, isMobile }: SceneCanvasProps) 
   const handleSelect = useCallback(
     (node: SceneNode) => {
       dismissHint();
+      posthog.capture('scene_node_selected', { node: node.label, type: node.type, mode: state.mode });
       if (isMobile) {
         selectNode(node);
       } else if (state.mode === 'system' && node.type === 'planet' && node.children.length > 0) {
+        posthog.capture('scene_planet_explored', { planet: node.label });
         explorePlanet(node);
       } else {
         selectNode(node);
@@ -60,7 +63,10 @@ export default function SceneCanvas({ sceneGraph, isMobile }: SceneCanvasProps) 
     if (state.mode === 'system' && selectedNode.type === 'planet' && selectedNode.children.length > 0) {
       return {
         label: 'Explore',
-        handler: () => explorePlanet(selectedNode),
+        handler: () => {
+          posthog.capture('scene_panel_action', { node: selectedNode.label, action: 'explore' });
+          explorePlanet(selectedNode);
+        },
       };
     }
 
@@ -68,6 +74,7 @@ export default function SceneCanvas({ sceneGraph, isMobile }: SceneCanvasProps) 
     return {
       label: 'Open',
       handler: () => {
+        posthog.capture('scene_panel_action', { node: selectedNode.label, action: 'open', route: selectedNode.route });
         setNavigating(true);
         router.push(selectedNode.route);
       },
@@ -77,7 +84,13 @@ export default function SceneCanvas({ sceneGraph, isMobile }: SceneCanvasProps) 
   // Gap 9: Secondary action for sun — Contact
   const secondaryAction = useMemo(() => {
     if (selectedNode?.type === 'sun') {
-      return { label: 'Contact', handler: () => router.push('/contact') };
+      return {
+        label: 'Contact',
+        handler: () => {
+          posthog.capture('scene_panel_action', { node: 'sun', action: 'contact' });
+          router.push('/contact');
+        },
+      };
     }
     return undefined;
   }, [selectedNode, router]);
@@ -158,7 +171,10 @@ export default function SceneCanvas({ sceneGraph, isMobile }: SceneCanvasProps) 
         <div className="absolute bottom-20 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-lg border border-accent/20 bg-surface-overlay/90 px-4 py-2 text-sm text-cyan-100/70 backdrop-blur">
           {isMobile ? 'Tap a planet to explore' : 'Click a planet to explore'}
           <button
-            onClick={dismissHint}
+            onClick={() => {
+              posthog.capture('scene_hint_dismissed');
+              dismissHint();
+            }}
             className={`ml-3 text-accent hover:underline ${FOCUS_RING} rounded`}
             aria-label="Dismiss hint"
           >
@@ -173,7 +189,10 @@ export default function SceneCanvas({ sceneGraph, isMobile }: SceneCanvasProps) 
           <nav aria-label="Scene breadcrumb" className="flex items-center gap-1 rounded-lg border border-accent/30 bg-surface-overlay/90 px-4 py-2 min-h-[44px] text-sm backdrop-blur">
             <button
               type="button"
-              onClick={backToSystem}
+              onClick={() => {
+                posthog.capture('scene_back_to_system');
+                backToSystem();
+              }}
               className={`font-medium text-accent transition-colors hover:text-accent-hover ${FOCUS_RING} rounded`}
             >
               System

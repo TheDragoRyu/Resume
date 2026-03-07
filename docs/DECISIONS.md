@@ -262,3 +262,32 @@
 **Trade-offs:**
 - Adds ~30KB gzipped to the client bundle (posthog-js).
 - Relies on a third-party service; if PostHog is unreachable, events are silently dropped (no user impact).
+
+## 2026-03-07: PostHog Custom Engagement Events
+
+**Decision:** Add custom PostHog events across all major interaction surfaces to measure whether visitors understand and engage with the resume site.
+
+**Events:**
+
+1. **`hero_cta_clicked`** (`destination`) — Which entry point visitors choose from the landing page.
+2. **`resume_section_viewed`** (`section`) — Which resume sections are scrolled into view (fires once per section per session via IntersectionObserver).
+3. **`resume_toc_clicked`** (`section`, `device`) — Active navigation to a resume section via TOC (desktop or mobile).
+4. **`project_tag_toggled`** (`tag`, `action`, `active_count`) — Tag filter add/remove on the projects page.
+5. **`project_tags_cleared`** (`previous_count`) — Clear all tag filters.
+6. **`project_card_clicked`** (`project`, `featured`) — Which project a visitor clicks into.
+7. **`project_link_clicked`** (`project`, `link_type`) — External link clicks (GitHub, demo, write-up) on project detail pages.
+8. **`scene_node_selected`** (`node`, `type`, `mode`) — Clicking any object in the 3D scene.
+9. **`scene_planet_explored`** (`planet`) — Zooming into a planet (category) in the 3D view.
+10. **`scene_back_to_system`** — Returning to the system overview from planet view.
+11. **`scene_panel_action`** (`node`, `action`, `route`) — Taking action from the ContextPanel (open, explore, contact).
+12. **`scene_hint_dismissed`** — Dismissing the onboarding hint ("Got it").
+
+**Implementation:**
+- Server components use a reusable `TrackClick` client component (`src/components/ui/TrackClick.tsx`) that wraps children and captures on click.
+- Client components call `posthog.capture()` directly at the interaction point.
+- Resume section tracking uses a `Set` ref to fire only once per section per page load.
+
+**Rationale:**
+- Events are designed to answer: "Do visitors find what they're looking for?" and "Do they understand the 3D navigation metaphor?"
+- Funnel analysis: hero CTA → page view → section/project engagement → external link click.
+- 3D scene events reveal whether the solar system metaphor aids or hinders navigation.

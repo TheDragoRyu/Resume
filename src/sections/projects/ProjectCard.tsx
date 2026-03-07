@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import TrackClick from '@/components/ui/TrackClick';
 
 interface ProjectCardProps {
   slug: string;
@@ -16,17 +17,18 @@ export default function ProjectCard({
   featured,
 }: ProjectCardProps) {
   return (
-    <article
-      className={`group rounded-xl border bg-surface-raised p-6 transition-all hover:border-glow-cyan ${
-        featured ? 'border-neon-pink/30' : 'border-accent/10'
-      }`}
-    >
-      <div className="flex items-start justify-between gap-2">
-        <h2 className="text-lg font-semibold text-cyan-100 group-hover:text-accent transition-colors">
-          <Link href={`/projects/${slug}`} className="after:absolute after:inset-0 relative">
-            {title}
-          </Link>
-        </h2>
+    <TrackClick event="project_card_clicked" properties={{ project: slug, featured }}>
+      <article
+        className={`group rounded-xl border bg-surface-raised p-6 transition-all hover:border-glow-cyan ${
+          featured ? 'border-neon-pink/30' : 'border-accent/10'
+        }`}
+      >
+        <div className="flex items-start justify-between gap-2">
+          <h2 className="text-lg font-semibold text-cyan-100 group-hover:text-accent transition-colors">
+            <Link href={`/projects/${slug}`} className="after:absolute after:inset-0 relative">
+              {title}
+            </Link>
+          </h2>
         {featured && (
           <span className="shrink-0 rounded-full bg-neon-pink/20 px-2 py-0.5 text-xs font-medium text-neon-pink">
             Featured
@@ -46,6 +48,7 @@ export default function ProjectCard({
           ))}
         </div>
       )}
-    </article>
+      </article>
+    </TrackClick>
   );
 }

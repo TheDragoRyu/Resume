@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import TrackClick from '@/components/ui/TrackClick';
 
 interface HeroSectionProps {
   name: string;
@@ -16,24 +17,30 @@ export default function HeroSection({ name, role, description }: HeroSectionProp
       <p className="mt-4 max-w-xl text-cyan-100/70">{description}</p>
 
       <div className="mt-8 flex flex-wrap justify-center gap-4">
-        <Link
-          href="/resume"
-          className="rounded-lg bg-neon-pink px-6 py-3 min-h-[44px] font-bold text-black transition-colors hover:bg-neon-pink/80"
-        >
-          Resume
-        </Link>
-        <Link
-          href="/projects"
-          className="rounded-lg border border-accent/30 px-6 py-3 min-h-[44px] font-medium text-accent transition-colors hover:border-accent/60 hover:bg-accent/5"
-        >
-          Projects
-        </Link>
-        <Link
-          href="/contact"
-          className="rounded-lg border border-accent/30 px-6 py-3 min-h-[44px] font-medium text-accent transition-colors hover:border-accent/60 hover:bg-accent/5"
-        >
-          Contact
-        </Link>
+        <TrackClick event="hero_cta_clicked" properties={{ destination: 'resume' }}>
+          <Link
+            href="/resume"
+            className="rounded-lg bg-neon-pink px-6 py-3 min-h-[44px] font-bold text-black transition-colors hover:bg-neon-pink/80"
+          >
+            Resume
+          </Link>
+        </TrackClick>
+        <TrackClick event="hero_cta_clicked" properties={{ destination: 'projects' }}>
+          <Link
+            href="/projects"
+            className="rounded-lg border border-accent/30 px-6 py-3 min-h-[44px] font-medium text-accent transition-colors hover:border-accent/60 hover:bg-accent/5"
+          >
+            Projects
+          </Link>
+        </TrackClick>
+        <TrackClick event="hero_cta_clicked" properties={{ destination: 'contact' }}>
+          <Link
+            href="/contact"
+            className="rounded-lg border border-accent/30 px-6 py-3 min-h-[44px] font-medium text-accent transition-colors hover:border-accent/60 hover:bg-accent/5"
+          >
+            Contact
+          </Link>
+        </TrackClick>
       </div>
 
       <p className="mt-6 text-sm text-cyan-100/40">

@@ -1,3 +1,5 @@
+import TrackClick from '@/components/ui/TrackClick';
+
 interface CaseStudyBodyProps {
   title: string;
   description: string;
@@ -38,34 +40,40 @@ export default function CaseStudyBody({
       {links && (Object.values(links).some(Boolean)) && (
         <div className="mt-4 flex gap-4">
           {links.github && (
-            <a
-              href={links.github}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-sm text-accent hover:text-accent-hover transition-colors"
-            >
-              GitHub
-            </a>
+            <TrackClick event="project_link_clicked" properties={{ project: title, link_type: 'github' }}>
+              <a
+                href={links.github}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-accent hover:text-accent-hover transition-colors"
+              >
+                GitHub
+              </a>
+            </TrackClick>
           )}
           {links.demo && (
-            <a
-              href={links.demo}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-sm text-accent hover:text-accent-hover transition-colors"
-            >
-              Live Demo
-            </a>
+            <TrackClick event="project_link_clicked" properties={{ project: title, link_type: 'demo' }}>
+              <a
+                href={links.demo}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-accent hover:text-accent-hover transition-colors"
+              >
+                Live Demo
+              </a>
+            </TrackClick>
           )}
           {links.writeup && (
-            <a
-              href={links.writeup}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-sm text-accent hover:text-accent-hover transition-colors"
-            >
-              Write-up
-            </a>
+            <TrackClick event="project_link_clicked" properties={{ project: title, link_type: 'writeup' }}>
+              <a
+                href={links.writeup}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-accent hover:text-accent-hover transition-colors"
+              >
+                Write-up
+              </a>
+            </TrackClick>
           )}
         </div>
       )}
