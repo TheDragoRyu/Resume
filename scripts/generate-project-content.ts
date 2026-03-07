@@ -20,6 +20,8 @@ interface RepoOverrides {
 interface FeaturedRepoConfig {
   repo: string;
   order: number;
+  lock?: boolean;
+  context?: string;
   categoryId?: string;
   featured?: boolean;
   overrides?: RepoOverrides;
@@ -64,23 +66,38 @@ interface CacheFile {
 const PROJECTS_DIR = path.join(process.cwd(), 'src', 'data', 'projects');
 const CACHE_PATH = path.join(process.cwd(), '.project-cache.json');
 const CONFIG_PATH = path.join(process.cwd(), 'scripts', 'featured-repos.json');
-const MAX_README_CHARS = 8000;
+const MAX_README_CHARS = 3000;
 
-const SYSTEM_PROMPT = `You are a technical writer creating a project case study for a software developer's portfolio website. Your output must be ONLY raw Markdown content with no frontmatter, no code fences, and no preamble.
+const SYSTEM_PROMPT = `You write short project case studies for a developer's portfolio website. The audience is recruiters and hiring managers — they care about what the project DOES, what a user SEES, and what skills it demonstrates. They do not care about internal code structure, build pipelines, or developer tooling.
 
-Write exactly four sections using these exact H2 headings in this order:
+Output ONLY raw Markdown. No frontmatter, no code fences, no preamble, no extra commentary.
+
+Produce exactly six sections in this order with these exact H2 headings:
+
+## Description
+## Tags
 ## Problem
-## Approach
-## Results
+## Solution
+## Highlights
 ## Tech Stack
 
-Rules:
-- "## Problem" (2-4 sentences): The real-world problem this project solves.
-- "## Approach" (3-6 sentences): Technical approach, key decisions, patterns used.
-- "## Results" (3-5 bullet points): Concrete outcomes as a Markdown list.
-- "## Tech Stack" (1 line): Comma-separated list of technologies.
+Section rules:
+- "## Description": One sentence (max 20 words). What this project IS from a user's perspective. E.g. "An interactive portfolio site with a 3D solar system navigation." This goes on the project card — make it count.
+- "## Tags": One line. 3-6 comma-separated tags in Title Case. Focus on skills a recruiter searches for (e.g. "React", "Three.js", "Responsive Design", "Accessibility") not internal concerns (e.g. "Content Pipeline", "Validation").
+- "## Problem": 1-2 sentences. What gap or need motivated this project? Frame it from the repo owner's personal perspective — this is THEIR project, not a generic tool for "developers". Use first person or impersonal phrasing like "Needed..." not "Developers needed...".
+- "## Solution": 2-3 sentences. What was built and how does it work FROM THE OUTSIDE? Mention visible features, interactions, and user experience. Name technologies only when they explain a visible capability (e.g. "Three.js powers an interactive 3D solar system" not "Three.js scenes loaded client-side").
+- "## Highlights": 3-5 short bullet points. Each must describe something a recruiter can SEE, CLICK, or VERIFY. Good: "Keyboard-navigable 3D scene with screen reader support". Bad: "Strict folder boundaries". Bad: "Content validation at build time".
+- "## Tech Stack": One line. Comma-separated list of technologies.
 
-Do not invent metrics not in the source material. Write in third person past tense. Keep total output under 300 words.`;
+Style constraints:
+- Total output MUST be under 200 words.
+- Write in third person past tense.
+- Lead with what's visible and impressive. Save internal details for last or omit them.
+- Do not invent features, metrics, or outcomes not in the source material.
+- Do not mention: file paths, directory structures, config files, build scripts, folder boundaries, frontmatter, loaders, or validation pipelines.
+- No marketing fluff ("cutting-edge", "seamless", "robust", "elegant").
+- No meta-commentary about the README or repo.
+- If "Author's notes" are provided, treat them as the highest-priority source. They contain the author's own perspective on what matters about the project — use them to guide tone, emphasis, and what to highlight.`;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -116,12 +133,25 @@ function deriveTitle(repo: CachedRepo): string {
   return repo.config.overrides?.title ?? toTitleCase(repo.github.name);
 }
 
-function deriveTags(repo: CachedRepo): string[] {
-  if (repo.config.overrides?.tags) return repo.config.overrides.tags;
-  const topics = repo.github.topics ?? [];
-  const langs = getTopLanguages(repo.languages);
-  const combined = [...new Set([...topics, ...langs])];
-  return combined.slice(0, 8);
+function parseOneLinerSection(body: string, heading: string): string {
+  const match = body.match(new RegExp(`## ${heading}\\n(.+)`));
+  return match ? match[1].trim() : '';
+}
+
+function parseTagsFromBody(body: string): string[] {
+  const line = parseOneLinerSection(body, 'Tags');
+  if (!line) return [];
+  return line.split(',').map((t) => t.trim()).filter(Boolean);
+}
+
+function parseDescriptionFromBody(body: string): string {
+  return parseOneLinerSection(body, 'Description');
+}
+
+function stripMetaSections(body: string): string {
+  return body
+    .replace(/## Description\n.+\n\n?/, '')
+    .replace(/## Tags\n.+\n\n?/, '');
 }
 
 function deriveDescription(repo: CachedRepo): string {
@@ -149,12 +179,14 @@ function deriveLinks(repo: CachedRepo): Record<string, string> {
 
 function buildFrontmatter(
   repo: CachedRepo,
-  defaults: FeaturedReposDefaults
+  defaults: FeaturedReposDefaults,
+  aiTags: string[],
+  aiDescription: string
 ): string {
   const slug = deriveSlug(repo);
   const title = deriveTitle(repo);
-  const description = deriveDescription(repo);
-  const tags = deriveTags(repo);
+  const description = repo.config.overrides?.description ?? (aiDescription || deriveDescription(repo));
+  const tags = repo.config.overrides?.tags ?? aiTags;
   const links = deriveLinks(repo);
   const categoryId = repo.config.categoryId ?? defaults.categoryId;
   const featured = repo.config.featured ?? defaults.featured;
@@ -197,13 +229,17 @@ function buildUserPrompt(repo: CachedRepo): string {
   const langs = getTopLanguages(repo.languages, 6).join(', ');
   const topics = (repo.github.topics ?? []).join(', ');
 
+  const contextBlock = repo.config.context
+    ? `\nAuthor's notes:\n${repo.config.context}\n`
+    : '';
+
   return `Project: ${repo.github.full_name}
 Description: ${repo.github.description ?? 'N/A'}
 Homepage: ${repo.github.homepage ?? 'N/A'}
 Stars: ${repo.github.stargazers_count} | Forks: ${repo.github.forks_count}
 Languages: ${langs || 'N/A'}
 Topics: ${topics || 'N/A'}
-
+${contextBlock}
 README:
 ${readme || 'No README available.'}`;
 }
@@ -220,7 +256,7 @@ function invokeClaude(
     const child = execFile(
       'claude',
       ['-p', '--model', 'sonnet', '--output-format', 'text'],
-      { maxBuffer: 1024 * 1024, timeout: 120_000 },
+      { maxBuffer: 1024 * 1024, timeout: 120_000, env: { ...process.env, CLAUDECODE: '' } },
       (err, stdout, stderr) => {
         if (err) {
           reject(new Error(`claude CLI failed: ${err.message}\n${stderr}`));
@@ -331,6 +367,13 @@ async function main() {
     const filePath = path.join(PROJECTS_DIR, `${slug}.md`);
     const shouldForce = forceAll || forceSlugs.has(slug);
 
+    // Lock: never overwrite locked repos, even with --force
+    if (repo.config.lock) {
+      console.log(`Skipping ${slug} — locked in featured-repos.json`);
+      skipped++;
+      continue;
+    }
+
     // Idempotency: skip if file exists and not forced
     if (fs.existsSync(filePath) && !shouldForce) {
       console.log(`Skipping ${slug} — file already exists (use --force to overwrite)`);
@@ -340,8 +383,6 @@ async function main() {
 
     console.log(`Generating content for ${slug}...`);
 
-    // Build frontmatter deterministically
-    const frontmatter = buildFrontmatter(repo, config.defaults);
     const userPrompt = buildUserPrompt(repo);
 
     // Invoke Claude for body content
@@ -354,7 +395,7 @@ async function main() {
     }
 
     // Validate output has expected sections
-    const requiredSections = ['## Problem', '## Approach', '## Results', '## Tech Stack'];
+    const requiredSections = ['## Description', '## Tags', '## Problem', '## Solution', '## Highlights', '## Tech Stack'];
     const missingSections = requiredSections.filter((s) => !body.includes(s));
     if (missingSections.length > 0) {
       console.error(
@@ -363,8 +404,16 @@ async function main() {
       continue;
     }
 
+    // Extract AI-generated metadata and strip meta sections from body
+    const aiTags = parseTagsFromBody(body);
+    const aiDescription = parseDescriptionFromBody(body);
+    const cleanBody = stripMetaSections(body);
+
+    // Build frontmatter with AI tags and description
+    const frontmatter = buildFrontmatter(repo, config.defaults, aiTags, aiDescription);
+
     // Assemble full file
-    const fullContent = `${frontmatter}\n\n${body}\n`;
+    const fullContent = `${frontmatter}\n\n${cleanBody}\n`;
 
     // Write file
     fs.writeFileSync(filePath, fullContent);

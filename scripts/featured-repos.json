@@ -1,7 +1,54 @@
 {
+  "_docs": {
+    "usage": "Add GitHub repos to 'repos' array. Run: npm run sync-projects",
+    "commands": {
+      "npm run sync:fetch": "Fetch GitHub metadata into .project-cache.json",
+      "npm run sync:generate": "Generate .md files from cache using claude CLI",
+      "npm run sync-projects": "Run both steps above in sequence",
+      "npm run sync:generate -- --force": "Overwrite ALL non-locked generated files",
+      "npm run sync:generate -- --force=slug": "Overwrite a specific non-locked project file"
+    },
+    "repo_fields": {
+      "repo (required)": "GitHub owner/name, e.g. 'TheDragoRyu/Resume'",
+      "order (required)": "Unique integer. Existing projects use 1-3, so start at 4+",
+      "lock": "Set true to prevent regeneration. --force will NOT overwrite locked repos.",
+      "categoryId": "Defaults to defaults.categoryId if omitted",
+      "featured": "Defaults to defaults.featured if omitted",
+      "overrides.title": "Custom display title (default: title-case of repo name)",
+      "overrides.slug": "Custom URL slug (default: kebab-case of repo name)",
+      "overrides.description": "Custom description (default: AI-generated from repo content)",
+      "overrides.tags": "Array of strings (default: AI-generated from repo content)",
+      "overrides.links.demo": "Demo URL (default: GitHub homepage field)",
+      "overrides.links.writeup": "Write-up URL (default: none)",
+      "_note": "links.github is always auto-set from the repo URL",
+      "context": "Free-text hints for AI generation. Your role, what makes the project interesting, skills to highlight, target audience, etc. Injected directly into the Claude prompt alongside GitHub data."
+    }
+  },
   "defaults": {
     "categoryId": "cat-experience",
     "featured": false
   },
-  "repos": []
+  "repos": [
+    {
+      "repo": "TheDragoRyu/Resume",
+      "order": 1,
+      "featured": true,
+      "overrides": {
+        "title": "3D Portfolio Site",
+        "slug": "portfolio-site"
+      }
+    },
+    {
+      "repo": "TheDragoRyu/SoilMoisture-Simulator",
+      "order": 2,
+      "featured": false,
+      "context": "Built to learn and apply Unity's ECS (Entity Component System) architecture, and Unity's DOTS (Data Oriented Technical Stack) architecture. The soil moisture simulation was the domain, but the real goal was understanding data-oriented design with ECS — separating data (components) from logic (systems) for performance and scalability."
+    },
+    {
+      "repo": "TheDragoRyu/Go_Particle_System",
+      "order": 3,
+      "featured": true,
+      "context": "Built to learn go programming language, this uses a custom particle system written by me inspired by Unity's Particle system"
+    }
+  ]
 }

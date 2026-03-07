@@ -9,6 +9,8 @@
     "prebuild": "npm run validate",
     "build": "next build",
     "start": "npx serve out",
+    "preview": "npx serve out --listen tcp://0.0.0.0:4000",
+    "deploy:test": "fuser -k 4000/tcp 2>/dev/null; npm run build && npx serve out --listen tcp://0.0.0.0:4000",
     "sync:fetch": "tsx scripts/sync-github-projects.ts",
     "sync:generate": "tsx scripts/generate-project-content.ts",
     "sync-projects": "npm run sync:fetch && npm run sync:generate"
