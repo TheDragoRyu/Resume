@@ -4,6 +4,7 @@ import '@/styles/globals.css';
 import SkipLink from '@/components/layout/SkipLink';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
+import PostHogProvider from '@/components/PostHogProvider';
 import { getNavData } from '@/content/content-loader';
 
 const silkscreen = Silkscreen({
@@ -44,12 +45,14 @@ export default async function RootLayout({
   return (
     <html lang="en" className={silkscreen.variable}>
       <body className="scanlines crt-vignette flex min-h-screen flex-col">
-        <SkipLink />
-        <Header navData={navData} />
-        <main id="main-content" className="flex-1">
-          {children}
-        </main>
-        <Footer siteTitle={navData.siteTitle} />
+        <PostHogProvider>
+          <SkipLink />
+          <Header navData={navData} />
+          <main id="main-content" className="flex-1">
+            {children}
+          </main>
+          <Footer siteTitle={navData.siteTitle} />
+        </PostHogProvider>
       </body>
     </html>
   );

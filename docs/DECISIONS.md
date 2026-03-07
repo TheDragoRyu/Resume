@@ -240,3 +240,25 @@
 - Mobile 3D uses a tap-then-action pattern (tap to select, then tap "Explore"/"Open") which adds one extra interaction step but avoids accidental navigation.
 - Hit colliders add invisible geometry; performance impact is negligible (simple transparent spheres).
 - `sessionStorage` for onboarding hint means hint reappears per tab — acceptable for a portfolio site.
+
+## 2026-03-07: PostHog Cloud Analytics
+
+**Decision:** Add PostHog Cloud (client-side JS SDK) for pageview and interaction tracking.
+
+**Changes:**
+
+1. **`posthog-js` installed** as a runtime dependency.
+2. **`src/components/PostHogProvider.tsx`** — a `'use client'` component that initializes PostHog and captures `$pageview` on every App Router route change via `usePathname` + `useSearchParams`. Wrapped in `<Suspense>` to avoid SSR issues.
+3. **Root layout (`layout.tsx`)** wraps the app body with `<PostHogProvider>`.
+4. **Environment variables** (`NEXT_PUBLIC_POSTHOG_KEY`, `NEXT_PUBLIC_POSTHOG_HOST`) stored in `.env.local` (gitignored) and must be set in the deployment platform.
+
+**Rationale:**
+- PostHog Cloud is free-tier friendly, privacy-conscious, and requires no backend — compatible with the static export constraint.
+- Client-side only; no SSR or API routes introduced.
+- Manual `$pageview` capture (with `capture_pageview: false`) ensures accurate tracking for SPA-style client navigation.
+- `capture_pageleave: true` provides session duration insights.
+- Provider gracefully no-ops when the env var is missing (e.g., local dev without keys).
+
+**Trade-offs:**
+- Adds ~30KB gzipped to the client bundle (posthog-js).
+- Relies on a third-party service; if PostHog is unreachable, events are silently dropped (no user impact).
