@@ -291,3 +291,44 @@
 - Events are designed to answer: "Do visitors find what they're looking for?" and "Do they understand the 3D navigation metaphor?"
 - Funnel analysis: hero CTA → page view → section/project engagement → external link click.
 - 3D scene events reveal whether the solar system metaphor aids or hinders navigation.
+
+## 2026-03-07: GitHub-to-Markdown Project Content Pipeline
+
+**Decision:** Automate project content generation from GitHub repos via a two-stage pipeline: fetch metadata, then generate case-study Markdown.
+
+**Architecture:**
+
+```
+featured-repos.json  (config)
+        |
+        v
+sync-github-projects.ts   <-- GitHub REST API
+        |
+        v
+.project-cache.json        (gitignored intermediate)
+        |
+        v
+generate-project-content.ts  <-- claude CLI
+        |
+        v
+src/data/projects/*.md      (committed source of truth)
+```
+
+**Key decisions:**
+
+1. **Two-stage split:** Separating fetch from generation allows re-running Claude without re-fetching, inspecting cached data before generating, and independent debugging of each stage.
+
+2. **Native `fetch` over `gh` CLI or `octokit`:** Node 20's built-in `fetch` avoids adding dependencies. The `gh` CLI would require installation and auth setup beyond a simple token. `octokit` would add a dependency for 3 API calls.
+
+3. **Claude CLI for generation:** Invokes `claude -p --model sonnet` via `child_process.execFile`. Constrained system prompt produces exactly 4 sections (Problem, Approach, Results, Tech Stack). Frontmatter is assembled deterministically — only the body text uses AI.
+
+4. **Gitignored cache, committed `.md` output:** The cache is ephemeral (regenerated on demand). The Markdown files are the committed source of truth, reviewed before committing.
+
+5. **Orbit fields intentionally omitted:** Generated frontmatter does not include `orbit` metadata. `resolveOrbit()` in `scene-data-builder.ts` assigns smart defaults based on index, so generated projects integrate into the 3D scene without manual orbit tuning.
+
+6. **Idempotent by default:** Existing `.md` files are skipped unless `--force` or `--force=<slug>` is passed, protecting manually authored content.
+
+**Trade-offs:**
+- Claude CLI must be installed for generation (fetch works standalone).
+- Unauthenticated GitHub API is limited to 60 req/hr (sufficient for small repo sets; `GITHUB_TOKEN` raises this to 5000).
+- Generated content requires human review before committing.
