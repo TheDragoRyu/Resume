@@ -5,6 +5,7 @@ import type {
   ContactFrontmatter,
   IntroFrontmatter,
   ProjectFrontmatter,
+  ProjectsPageFrontmatter,
 } from './content-types';
 import type { ContentItem } from './content-types';
 
@@ -140,9 +141,42 @@ export function validateContent(items: ContentItem[]): ValidationError[] {
     if (fm.type === 'page' && fm.slug === 'contact') {
       validateContactPage(item, label, errors);
     }
+
+    if (fm.type === 'page' && fm.slug === 'projects') {
+      validateProjectsPage(item, label, errors);
+    }
   }
 
   return errors;
+}
+
+function validateProjectsPage(
+  item: ContentItem,
+  label: string,
+  errors: ValidationError[]
+): void {
+  const fm = item.frontmatter as ProjectsPageFrontmatter;
+
+  const requiredFields: Array<[string, unknown]> = [
+    ['description', fm.description],
+    ['intro', fm.intro],
+  ];
+
+  for (const [field, value] of requiredFields) {
+    if (typeof value !== 'string' || !value.trim()) {
+      errors.push({
+        file: label,
+        message: `Projects page is missing required field: "${field}"`,
+      });
+    }
+  }
+
+  if (item.rawContent.trim()) {
+    errors.push({
+      file: label,
+      message: 'Projects page copy must use structured frontmatter, not a Markdown body.',
+    });
+  }
 }
 
 function validateContactPage(

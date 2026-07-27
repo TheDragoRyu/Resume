@@ -431,3 +431,26 @@ src/data/projects/*.md      (committed source of truth)
 
 - Desktop visitors now confirm a context-panel action instead of auto-zooming when they select a planet.
 - Project moons remain readily available, but their exploration is intentionally subordinate to the planet's Resume destination.
+
+## 2026-07-27: Dedicated Projects Planet
+
+**Decision:** Represent Projects as its own content-driven planet, separate from the planets that represent Resume sections.
+
+**Changes:**
+
+- Added a structured Projects page record that supplies the `/projects` title, metadata, introduction, planet label, description, and orbit settings.
+- Kept Experience, Skills, and Education as moon-free Resume planets whose primary routes remain `/resume#section`.
+- Moved every project moon beneath the dedicated Projects planet and made `/projects` that planet's primary destination.
+- Added semantic scene destinations so planets with the same visual type can expose different routes and action labels.
+- Added Projects page controls to Pages CMS plus matching typed loading and build validation.
+
+**Rationale:**
+
+- Work history and project case studies are separate information categories and should not share a planet identity.
+- A one-to-one Projects destination removes the implication that selecting Experience means selecting Projects while retaining optional 3D case-study exploration.
+
+**Trade-offs:**
+
+- The system view gains another outer planet, increasing scene density slightly.
+- Project `categoryId` remains required for content taxonomy even though it no longer determines a moon's visual parent.
+- This decision supersedes the project-parenting portion of **Resume-First Planet Actions** while preserving its select-then-confirm interaction model.

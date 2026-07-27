@@ -30,12 +30,12 @@ All content lives in `src/data/` as Markdown files with frontmatter. See `src/co
 2. Open [app.pagescms.org](https://app.pagescms.org).
 3. Sign in with the GitHub account that can edit this repository. Enable two-factor authentication on that account.
 4. Install the Pages CMS GitHub App for **only this repository**, not every repository in the account.
-5. Open `TheDragoRyu/Resume` on the `main` branch. The Profile, Resume sections, Projects, Contact page, and Site images editors will appear.
+5. Open `TheDragoRyu/Resume` on the `main` branch. The Profile, Resume sections, Projects, Projects page, Contact page, and Site images editors will appear.
 
 #### Routine updates
 
 1. Open the repository in Pages CMS and confirm that the selected branch is `main`.
-2. Choose Profile, Resume sections, Projects, Contact page, or Site images.
+2. Choose Profile, Resume sections, Projects, Projects page, Contact page, or Site images.
 3. Edit fields in the form. Rich-text fields support formatted content and image uploads.
 4. Add alt text whenever a project cover image is configured, then save. Pages CMS creates an attributed Git commit.
 5. Check the GitHub Actions deployment. Invalid content or missing image references fail validation and leave the previous successful deployment live.
@@ -68,17 +68,27 @@ If the photo does not appear:
 
 These controls write structured frontmatter in `src/data/pages/contact.md`. Keep the Markdown body empty so the form and visual card layout stay synchronized.
 
+#### Updating the Projects page and planet
+
+1. Choose **Projects page** in Pages CMS. This is separate from the **Projects** collection of individual case studies.
+2. Use **Page and planet title** to rename both the `/projects` heading and its 3D planet label.
+3. Use **Search, social, and planet description** to update page metadata and the planet's context-panel summary.
+4. Use **Page introduction** to update the copy above the project-card grid.
+5. Save and check the GitHub Actions deployment.
+
+These controls write structured frontmatter in `src/data/pages/projects.md`. Keep its Markdown body empty. The hidden `orbit` values control the Projects planet's position, speed, size, and color and are preserved by Pages CMS merge-on-save behavior.
+
 #### Security and recovery
 
 - Keep the GitHub App limited to this repository and revoke it from GitHub settings when it is no longer needed.
 - Do not place tokens, private contact data, or secrets in content fields or uploaded files; all committed content and media are public.
-- Fixed profile/contact files and resume sections cannot be created, renamed, or deleted from the editor. Project renames are disabled; Git history can recover an accidental project or media deletion.
+- Fixed profile, Contact, Projects page, and Resume-section files cannot be created, renamed, or deleted from the editor. Project renames are disabled; Git history can recover an accidental project or media deletion.
 - Review the commit diff in GitHub for sensitive or high-impact changes. The editor does not bypass repository history or build validation.
 
 ### Manual fallback: adding a project
 
 1. Create `src/data/projects/my-project.md` with required frontmatter.
-2. Set `categoryId` to a valid category id.
+2. Set `categoryId` to a valid category id. It remains a validated taxonomy relationship but does not control scene-planet placement.
 3. Run `npm run validate` to check.
 
 ### Manual fallback: adding a resume category

@@ -79,13 +79,21 @@ export interface ContactFrontmatter extends PageFrontmatter {
   };
 }
 
+/** Structured frontmatter for the Projects index and scene planet */
+export interface ProjectsPageFrontmatter extends PageFrontmatter {
+  description: string;
+  intro: string;
+  orbit?: OrbitMetadata;
+}
+
 /** Union of all frontmatter types */
 export type ContentFrontmatter =
   | IntroFrontmatter
   | CategoryFrontmatter
   | ProjectFrontmatter
   | PageFrontmatter
-  | ContactFrontmatter;
+  | ContactFrontmatter
+  | ProjectsPageFrontmatter;
 
 /** A parsed content item with frontmatter and rendered HTML body */
 export interface ContentItem<T extends BaseFrontmatter = BaseFrontmatter> {
@@ -114,6 +122,7 @@ export interface SceneNode {
   slug: string;
   label: string;
   description?: string;
+  destination: 'home' | 'resume-section' | 'projects-index' | 'project';
   type: 'sun' | 'planet' | 'moon';
   route: string;
   orbit: Required<OrbitMetadata>;

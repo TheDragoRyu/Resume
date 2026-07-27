@@ -55,7 +55,7 @@ The mandatory boundaries and naming rules are defined in [CLAUDE.md](../CLAUDE.m
 | --- | --- | --- |
 | `/` | Intro Markdown plus generated scene graph | Static page |
 | `/resume` | Intro and category Markdown | Static page |
-| `/projects` | All project Markdown | Static page with client-side tag filtering |
+| `/projects` | Structured Projects page frontmatter plus all project Markdown | Static page with client-side tag filtering |
 | `/projects/[slug]` | One project Markdown item | One static page per project through `generateStaticParams` |
 | `/contact` | Structured Contact frontmatter | Static page |
 | Not found | Route-level not-found component | Static fallback |
@@ -86,10 +86,11 @@ Content types add their own fields:
 - intro: role, photo, and optional orbit appearance;
 - category: description, icon, and optional orbit values;
 - project: category relationship, optional cover image and alt text, tags, featured state, links, and optional orbit values;
-- page: general standalone page content; and
+- page: general standalone page content;
+- projects page: required description and introduction plus optional planet orbit values; and
 - contact page: required description, introduction, email card, social-link list, location, and availability fields.
 
-The loader recursively reads `src/data/`, parses frontmatter, renders Markdown where present, sorts records by `order`, and provides typed queries for routes and navigation. A required Contact loader supplies its page, navigation label, and metadata from one typed record. Typed queries also prefix CMS-managed profile and project-cover paths with the configured deployment base path without changing their Markdown source values.
+The loader recursively reads `src/data/`, parses frontmatter, renders Markdown where present, sorts records by `order`, and provides typed queries for routes and navigation. Required Contact and Projects-page loaders supply page copy, metadata, navigation labels, and scene data from typed records. Typed queries also prefix CMS-managed profile and project-cover paths with the configured deployment base path without changing their Markdown source values.
 
 The validator rejects:
 
@@ -101,6 +102,7 @@ The validator rejects:
 - duplicate slugs;
 - projects without a category;
 - projects referencing an unknown category;
+- Projects pages with missing structured copy or Markdown body content;
 - Contact pages with missing structured fields, invalid email addresses, non-HTTPS social links, or Markdown body content;
 - profile or project images outside `/images/`, with unsafe extensions, or missing from `public/images`; and
 - project cover images without alternative text.
@@ -111,10 +113,11 @@ The validator rejects:
 
 `.pages.yml` maps the content types to an authenticated visual editor at Pages CMS:
 
-- Profile, Contact, and the existing Resume sections protect fixed files from creation, rename, and deletion.
+- Profile, Contact, Projects page, and the existing Resume sections protect fixed files from creation, rename, and deletion.
 - Contact exposes dedicated controls for page metadata, introductory copy, the email card, a reorderable list of HTTPS social links, and the location card.
-- Projects can be created and deleted, but not renamed; category selection uses a reference to the Resume collection.
-- Resume and project rich-text fields edit Markdown without requiring maintainers to open the source files; Contact deliberately keeps its body empty to protect the card layout.
+- Projects page exposes the title, search/social description, and index introduction shared by the route and its dedicated scene planet.
+- Project entries can be created and deleted, but not renamed; category selection uses a reference to the Resume collection.
+- Resume and project rich-text fields edit Markdown without requiring maintainers to open the source files; the structured Contact and Projects page records keep their bodies empty.
 - Image uploads are restricted to AVIF, JPEG, PNG, and WebP under `public/images`.
 - `settings.content.merge` preserves technical frontmatter such as IDs, types, slugs, icons, and 3D orbit settings when it is not exposed by a form.
 
@@ -130,11 +133,13 @@ flowchart TD
     A --> C["Sun node"]
     D["Category Markdown"] --> E["Resume sections and TOC"]
     D --> F["Header submenu"]
-    D --> G["Planet nodes"]
-    H["Project Markdown"] --> I["Project index and case studies"]
-    H --> J["Header submenu"]
-    H --> K["Moon nodes"]
-    L["Structured Contact frontmatter"] --> M["Contact page, metadata, and nav label"]
+    D --> G["Resume planet nodes"]
+    H["Structured Projects page"] --> I["Projects metadata and intro"]
+    H --> J["Dedicated Projects planet"]
+    K["Project Markdown"] --> L["Project cards and case studies"]
+    K --> M["Header submenu"]
+    K --> N["Moons under Projects planet"]
+    O["Structured Contact frontmatter"] --> P["Contact page, metadata, and nav label"]
 ```
 
 This projection is the mechanism that keeps the conventional and 3D navigation models aligned.
@@ -144,10 +149,13 @@ This projection is the mechanism that keeps the conventional and 3D navigation m
 The build-time scene builder maps:
 
 - the intro record to the sun;
-- resume categories to planets; and
-- projects to moons under the planet matching their `categoryId`.
+- resume categories to Resume planets;
+- the structured Projects page record to a dedicated Projects planet; and
+- every project to a moon beneath the Projects planet.
 
 Missing orbit values receive deterministic defaults so newly generated projects can appear without manual 3D tuning.
+
+Each scene node also carries a semantic `destination` separate from its visual body type. That distinction lets Resume and Projects both render as planets while preserving different primary routes and action labels. A project's `categoryId` remains a validated content relationship, not its visual parent in the scene.
 
 At runtime:
 

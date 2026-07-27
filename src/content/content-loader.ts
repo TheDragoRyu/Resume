@@ -12,6 +12,7 @@ import type {
   NavData,
   PageFrontmatter,
   ProjectFrontmatter,
+  ProjectsPageFrontmatter,
 } from './content-types';
 
 const DATA_DIR = path.join(process.cwd(), 'src', 'data');
@@ -200,6 +201,15 @@ export async function getContactPage(): Promise<ContentItem<ContactFrontmatter>>
   const page = await getContentBySlug<ContactFrontmatter>('contact');
   if (!page) {
     throw new Error('Required contact page not found in src/data/pages/');
+  }
+  return page;
+}
+
+/** Get the required structured Projects index page */
+export async function getProjectsPage(): Promise<ContentItem<ProjectsPageFrontmatter>> {
+  const page = await getContentBySlug<ProjectsPageFrontmatter>('projects');
+  if (!page) {
+    throw new Error('Required Projects page not found in src/data/pages/');
   }
   return page;
 }

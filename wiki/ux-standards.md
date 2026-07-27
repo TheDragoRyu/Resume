@@ -15,12 +15,13 @@
 
 ### Solar System Mapping (3D as a visual router)
 - **Sun** → Intro / About / Contact CTA area
-- **Planets** → Resume sections (Experience, Skills, Education, etc.)
-- **Moons** → Individual projects (`/projects/[slug]`)
+- **Resume planets** → Resume sections (Experience, Skills, Education, etc.)
+- **Projects planet** → Projects index (`/projects`)
+- **Moons** → Individual projects beneath the Projects planet (`/projects/[slug]`)
 
 **Rule:** 3D labels must match page/section titles from frontmatter.
 
-**Action hierarchy:** A planet's primary action opens its mapped Resume section. Exploring associated project moons is a distinct secondary action.
+**Action hierarchy:** Resume planets open their mapped sections. The Projects planet opens the project index, with moon exploration as its distinct secondary action.
 
 ---
 
@@ -92,14 +93,14 @@
 - No hover assumptions.
 - First tap **selects** object and opens a small panel/bottom-sheet with:
   - Title (e.g., `Skills`)
-  - Primary action: **Open Resume Section** for planets or **Open Project** for moons
-  - Secondary: **Explore N Projects** when a planet has moons, plus **Back** / **Close** where appropriate
+  - Primary action: **Open Resume Section** for Resume planets, **Open Projects** for the Projects planet, or **Open Project** for moons
+  - Secondary: **Explore N Projects** on the Projects planet, plus **Back** / **Close** where appropriate
 - Require the explicit primary action to navigate (prevents accidental route changes and preserves planet semantics).
 
 ### Onboarding cues (one-time)
 - When the 3D scene is ready, do a **single subtle pulse** on 1–2 key bodies (e.g., Experience + Projects), then stop.
 - Show a small hint line (dismissible):
-  - “Click a planet to open a resume section. Click a moon to open a project.”
+  - “Click a planet for Resume or Projects.”
 
 ### Definition of done
 - A first-time user can answer “What can I click?” within **3 seconds**.
@@ -228,7 +229,7 @@
 ### Standard phrases (preferred)
 - “Explore in 3D (optional)”
 - “Use the menu if you prefer”
-- “Click a planet to open a resume section. Click a moon to open a project.”
+- “Click a planet for Resume or Projects.”
 - “Back to Home”
 - “Performance mode”
 

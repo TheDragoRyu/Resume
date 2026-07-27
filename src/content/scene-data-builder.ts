@@ -3,10 +3,11 @@ import type {
   ContentItem,
   IntroFrontmatter,
   OrbitMetadata,
+  ProjectsPageFrontmatter,
   ProjectFrontmatter,
   SceneNode,
 } from './content-types';
-import { getCategories, getIntro, getProjectsByCategory } from './content-loader';
+import { getCategories, getIntro, getProjects, getProjectsPage } from './content-loader';
 
 const DEFAULT_ORBIT: Required<OrbitMetadata> = {
   orbitRadius: 8,
@@ -38,6 +39,7 @@ function buildSunNode(intro: ContentItem<IntroFrontmatter>): SceneNode {
     slug: fm.slug,
     label: fm.title,
     description: desc,
+    destination: 'home',
     type: 'sun',
     route: '/',
     orbit: {
@@ -61,6 +63,7 @@ function buildMoonNode(
     label: fm.title,
     description: fm.description,
     type: 'moon',
+    destination: 'project',
     route: `/projects/${fm.slug}`,
     orbit: resolveOrbit(fm.orbit, index, {
       orbitRadius: 2 + index * 1.2,
@@ -71,9 +74,8 @@ function buildMoonNode(
   };
 }
 
-function buildPlanetNode(
+function buildResumePlanetNode(
   category: ContentItem<CategoryFrontmatter>,
-  projects: ContentItem<ProjectFrontmatter>[],
   index: number
 ): SceneNode {
   const fm = category.frontmatter;
@@ -83,24 +85,52 @@ function buildPlanetNode(
     label: fm.title,
     description: fm.description,
     type: 'planet',
+    destination: 'resume-section',
     route: `/resume#${fm.slug}`,
     orbit: resolveOrbit(fm.orbit, index),
-    children: projects.map((p, i) => buildMoonNode(p, i)),
+    children: [],
+  };
+}
+
+function buildProjectsPlanetNode(
+  page: ContentItem<ProjectsPageFrontmatter>,
+  projects: ContentItem<ProjectFrontmatter>[],
+  index: number
+): SceneNode {
+  const fm = page.frontmatter;
+  return {
+    id: fm.id,
+    slug: fm.slug,
+    label: fm.title,
+    description: fm.description,
+    type: 'planet',
+    destination: 'projects-index',
+    route: '/projects',
+    orbit: resolveOrbit(fm.orbit, index),
+    children: projects.map((project, projectIndex) =>
+      buildMoonNode(project, projectIndex)
+    ),
   };
 }
 
 /** Build the full scene graph from content data */
 export async function buildSceneGraph(): Promise<SceneNode> {
-  const intro = await getIntro();
-  const categories = await getCategories();
+  const [intro, categories, projectsPage, projects] = await Promise.all([
+    getIntro(),
+    getCategories(),
+    getProjectsPage(),
+    getProjects(),
+  ]);
 
   const sun = buildSunNode(intro);
 
-  for (let i = 0; i < categories.length; i++) {
-    const cat = categories[i];
-    const projects = await getProjectsByCategory(cat.frontmatter.id);
-    sun.children.push(buildPlanetNode(cat, projects, i));
-  }
+  categories.forEach((category, index) => {
+    sun.children.push(buildResumePlanetNode(category, index));
+  });
+
+  sun.children.push(
+    buildProjectsPlanetNode(projectsPage, projects, categories.length)
+  );
 
   return sun;
 }

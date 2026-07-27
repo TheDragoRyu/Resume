@@ -34,8 +34,8 @@ export default function SceneCanvas({ sceneGraph, isMobile }: SceneCanvasProps) 
 
   const selectedNode = state.selectedNode;
 
-  // Selection always opens the context panel. Planet project exploration remains
-  // an explicit secondary action so planets keep their resume-section meaning.
+  // Selection always opens the context panel. Project exploration remains an
+  // explicit secondary action on the dedicated Projects planet.
   const handleSelect = useCallback(
     (node: SceneNode) => {
       dismissHint();
@@ -53,11 +53,13 @@ export default function SceneCanvas({ sceneGraph, isMobile }: SceneCanvasProps) 
     if (!selectedNode) return { label: 'Open', handler: () => {} };
 
     const label =
-      selectedNode.type === 'planet'
+      selectedNode.destination === 'resume-section'
         ? 'Open Resume Section'
-        : selectedNode.type === 'moon'
-          ? 'Open Project'
-          : 'Open Home';
+        : selectedNode.destination === 'projects-index'
+          ? 'Open Projects'
+          : selectedNode.destination === 'project'
+            ? 'Open Project'
+            : 'Open Home';
 
     return {
       label,
@@ -84,7 +86,7 @@ export default function SceneCanvas({ sceneGraph, isMobile }: SceneCanvasProps) 
 
     if (
       state.mode === 'system' &&
-      selectedNode?.type === 'planet' &&
+      selectedNode?.destination === 'projects-index' &&
       selectedNode.children.length > 0
     ) {
       const projectCount = selectedNode.children.length;
@@ -177,7 +179,9 @@ export default function SceneCanvas({ sceneGraph, isMobile }: SceneCanvasProps) 
       {/* Onboarding hint (Gap 7) */}
       {showHint && (
         <div className="absolute bottom-20 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-lg border border-accent/20 bg-surface-overlay/90 px-4 py-2 text-sm text-cyan-100/70 backdrop-blur">
-          {isMobile ? 'Tap a planet for its resume section' : 'Click a planet for its resume section'}
+          {isMobile
+            ? 'Tap a planet for Resume or Projects'
+            : 'Click a planet for Resume or Projects'}
           <button
             onClick={() => {
               posthog.capture('scene_hint_dismissed');

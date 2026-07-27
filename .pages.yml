@@ -211,6 +211,33 @@ content:
           media: images
           rename: safe
 
+  - name: projects-page
+    label: Projects page
+    type: file
+    path: src/data/pages/projects.md
+    format: yaml-frontmatter
+    operations:
+      create: false
+      rename: false
+      delete: false
+    fields:
+      - name: title
+        label: Page and planet title
+        type: string
+        required: true
+      - name: description
+        label: Search, social, and planet description
+        type: text
+        required: true
+        options:
+          maxlength: 240
+      - name: intro
+        label: Page introduction
+        type: text
+        required: true
+        options:
+          maxlength: 400
+
   - name: contact
     label: Contact page
     type: file

@@ -53,8 +53,9 @@ The text content renders before the 3D bundle, and a “Loading scene...” stat
 The scene is a visual navigation model:
 
 - the sun represents the introduction and provides a Contact action;
-- planets represent resume categories;
-- moons represent projects associated with each category;
+- Resume planets represent Experience, Skills, and Education;
+- a dedicated Projects planet represents the project index;
+- moons represent individual projects and orbit the Projects planet;
 - orbit colors and sizes come from content metadata or stable defaults; and
 - a cyberpunk starfield, orbit lines, neon colors, and labels establish the visual theme.
 
@@ -63,8 +64,8 @@ The scene is a visual navigation model:
 - All sun, planet, and moon labels are visible.
 - Hovering an interactive body changes its visual state and cursor.
 - Larger invisible hit areas make small objects easier to select.
-- The initial system view shows the sun and category planets.
-- Exploring a planet moves to a focused view containing that planet and its project moons.
+- The initial system view shows the sun, Resume planets, and the Projects planet.
+- Exploring the Projects planet moves to a focused view containing that planet and all project moons.
 - A scene breadcrumb returns to the system view.
 - Focused planet state is represented in the URL hash and responds to browser back/forward navigation.
 - A context panel shows the selected item's title, description, and relevant Open, Explore, Contact, Back, or Close actions.
@@ -74,12 +75,13 @@ The scene is a visual navigation model:
 ### Desktop, mobile, and keyboard input
 
 - Desktop, mobile, and keyboard planet selection opens the same context panel instead of entering project exploration automatically.
-- A planet's primary **Open Resume Section** action navigates to its matching `/resume#section` anchor.
-- Planets with moons offer **Explore N Projects** as a separate secondary action that enters the focused planet view.
+- A Resume planet's primary **Open Resume Section** action navigates to its matching `/resume#section` anchor.
+- The Projects planet's primary **Open Projects** action navigates to `/projects`.
+- The Projects planet also offers **Explore N Projects** as a secondary action that enters its focused moon view.
 - Selecting a moon exposes **Open Project** for its individual case study.
 - A DOM-based keyboard navigator exposes the nodes in the current scene with arrow-key movement.
 - Focus indicators remain visible on scene controls.
-- A first-session hint explains that planets lead to Resume sections and can be dismissed.
+- A first-session hint explains that planets lead to Resume or Projects and can be dismissed.
 - The first planets pulse subtly while that hint is present.
 
 ### Motion and performance controls
@@ -112,6 +114,7 @@ The current Experience content records progression from Unity Developer to Senio
 
 The projects page provides:
 
+- a Pages CMS-managed page title, introduction, search description, and social description;
 - a responsive project-card grid;
 - title, summary, tags, featured state, and an optional accessible cover image on each card;
 - featured projects ordered before other matching projects;
