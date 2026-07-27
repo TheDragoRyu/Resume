@@ -410,3 +410,24 @@ src/data/projects/*.md      (committed source of truth)
 
 - Adding another Contact card or field now requires coordinated schema, CMS configuration, validation, and component changes.
 - The Contact page no longer supports arbitrary rich-text body content; this intentionally protects the designed layout from structural drift.
+
+## 2026-07-27: Resume-First Planet Actions
+
+**Decision:** Keep each planet's mapped Resume section as its primary destination and make exploration of associated project moons an explicit secondary action.
+
+**Changes:**
+
+- Desktop, mobile, and keyboard planet selection now opens the same context panel instead of automatically entering focused planet view.
+- Planet panels use **Open Resume Section** as the primary action and navigate to the planet's `/resume#section` route.
+- Planets with projects expose **Explore N Projects** as a separate secondary action; moons use **Open Project**.
+- Updated the first-session hint to describe the Resume-section relationship.
+
+**Rationale:**
+
+- Resume categories such as Experience describe the candidate's history, while projects are separate supporting artifacts.
+- The action hierarchy now matches the documented sun/planet/moon information architecture and removes the misleading implication that Experience means Projects.
+
+**Trade-offs:**
+
+- Desktop visitors now confirm a context-panel action instead of auto-zooming when they select a planet.
+- Project moons remain readily available, but their exploration is intentionally subordinate to the planet's Resume destination.

@@ -20,6 +20,8 @@
 
 **Rule:** 3D labels must match page/section titles from frontmatter.
 
+**Action hierarchy:** A planet's primary action opens its mapped Resume section. Exploring associated project moons is a distinct secondary action.
+
 ---
 
 ## 2) Landing Page Standard (Above the Fold)
@@ -42,7 +44,7 @@
 
 ### Required components
 - **Top nav**: Resume, Projects, Contact (+ theme toggle if present)
-- **Context panel** (on selection): label + short description + “Open” button
+- **Context panel** (on selection): label + short description + destination-specific primary action + optional secondary exploration action
 - **Breadcrumb/back**: Home ▸ Current (with Back action)
 
 ### Optional components (nice-to-have)
@@ -90,9 +92,9 @@
 - No hover assumptions.
 - First tap **selects** object and opens a small panel/bottom-sheet with:
   - Title (e.g., `Skills`)
-  - Primary action: **Open**
-  - Secondary: **Back** / **Close**
-- Optional but recommended: require **Open** to navigate (prevents accidental route changes).
+  - Primary action: **Open Resume Section** for planets or **Open Project** for moons
+  - Secondary: **Explore N Projects** when a planet has moons, plus **Back** / **Close** where appropriate
+- Require the explicit primary action to navigate (prevents accidental route changes and preserves planet semantics).
 
 ### Onboarding cues (one-time)
 - When the 3D scene is ready, do a **single subtle pulse** on 1–2 key bodies (e.g., Experience + Projects), then stop.
@@ -127,7 +129,8 @@
 ### Selection confirmation
 - Provide immediate feedback on select:
   - highlight + label
-  - context panel shows **Open** button
+  - context panel shows a destination-specific **Open** button
+- Planet panels must keep the Resume section as the primary destination and project-moon exploration secondary.
 - On mobile, recommended flow:
   - tap 1 = select
   - tap Open (or tap 2) = navigate

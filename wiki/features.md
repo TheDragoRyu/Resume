@@ -73,11 +73,13 @@ The scene is a visual navigation model:
 
 ### Desktop, mobile, and keyboard input
 
-- Desktop planet selection can immediately enter the focused planet view.
-- Mobile uses a tap-to-select, then Explore/Open flow to avoid accidental navigation.
+- Desktop, mobile, and keyboard planet selection opens the same context panel instead of entering project exploration automatically.
+- A planet's primary **Open Resume Section** action navigates to its matching `/resume#section` anchor.
+- Planets with moons offer **Explore N Projects** as a separate secondary action that enters the focused planet view.
+- Selecting a moon exposes **Open Project** for its individual case study.
 - A DOM-based keyboard navigator exposes the nodes in the current scene with arrow-key movement.
 - Focus indicators remain visible on scene controls.
-- A first-session hint explains that planets can be explored and can be dismissed.
+- A first-session hint explains that planets lead to Resume sections and can be dismissed.
 - The first planets pulse subtly while that hint is present.
 
 ### Motion and performance controls

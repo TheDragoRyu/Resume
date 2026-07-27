@@ -34,22 +34,15 @@ export default function SceneCanvas({ sceneGraph, isMobile }: SceneCanvasProps) 
 
   const selectedNode = state.selectedNode;
 
-  // On mobile, clicking a planet always selects (shows panel) — never auto-explores.
-  // On desktop, clicking a planet with moons zooms in to show them.
+  // Selection always opens the context panel. Planet project exploration remains
+  // an explicit secondary action so planets keep their resume-section meaning.
   const handleSelect = useCallback(
     (node: SceneNode) => {
       dismissHint();
       posthog.capture('scene_node_selected', { node: node.label, type: node.type, mode: state.mode });
-      if (isMobile) {
-        selectNode(node);
-      } else if (state.mode === 'system' && node.type === 'planet' && node.children.length > 0) {
-        posthog.capture('scene_planet_explored', { planet: node.label });
-        explorePlanet(node);
-      } else {
-        selectNode(node);
-      }
+      selectNode(node);
     },
-    [state.mode, explorePlanet, selectNode, isMobile, dismissHint],
+    [state.mode, selectNode, dismissHint],
   );
 
   // Primary action in ContextPanel
@@ -59,29 +52,25 @@ export default function SceneCanvas({ sceneGraph, isMobile }: SceneCanvasProps) 
   } => {
     if (!selectedNode) return { label: 'Open', handler: () => {} };
 
-    // Gap 8: In system view, planets with moons show "Explore"
-    if (state.mode === 'system' && selectedNode.type === 'planet' && selectedNode.children.length > 0) {
-      return {
-        label: 'Explore',
-        handler: () => {
-          posthog.capture('scene_panel_action', { node: selectedNode.label, action: 'explore' });
-          explorePlanet(selectedNode);
-        },
-      };
-    }
+    const label =
+      selectedNode.type === 'planet'
+        ? 'Open Resume Section'
+        : selectedNode.type === 'moon'
+          ? 'Open Project'
+          : 'Open Home';
 
-    // Everything else navigates
     return {
-      label: 'Open',
+      label,
       handler: () => {
         posthog.capture('scene_panel_action', { node: selectedNode.label, action: 'open', route: selectedNode.route });
         setNavigating(true);
         router.push(selectedNode.route);
       },
     };
-  }, [selectedNode, state.mode, router, explorePlanet]);
+  }, [selectedNode, router]);
 
-  // Gap 9: Secondary action for sun — Contact
+  // Secondary actions keep Contact and project exploration available without
+  // changing the primary destination represented by the selected node.
   const secondaryAction = useMemo(() => {
     if (selectedNode?.type === 'sun') {
       return {
@@ -92,8 +81,27 @@ export default function SceneCanvas({ sceneGraph, isMobile }: SceneCanvasProps) 
         },
       };
     }
+
+    if (
+      state.mode === 'system' &&
+      selectedNode?.type === 'planet' &&
+      selectedNode.children.length > 0
+    ) {
+      const projectCount = selectedNode.children.length;
+      return {
+        label: `Explore ${projectCount} ${projectCount === 1 ? 'Project' : 'Projects'}`,
+        handler: () => {
+          posthog.capture('scene_panel_action', {
+            node: selectedNode.label,
+            action: 'explore',
+          });
+          explorePlanet(selectedNode);
+        },
+      };
+    }
+
     return undefined;
-  }, [selectedNode, router]);
+  }, [selectedNode, state.mode, router, explorePlanet]);
 
   // Keyboard nav nodes for current view
   const keyboardNodes = useMemo(() => {
@@ -169,7 +177,7 @@ export default function SceneCanvas({ sceneGraph, isMobile }: SceneCanvasProps) 
       {/* Onboarding hint (Gap 7) */}
       {showHint && (
         <div className="absolute bottom-20 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-lg border border-accent/20 bg-surface-overlay/90 px-4 py-2 text-sm text-cyan-100/70 backdrop-blur">
-          {isMobile ? 'Tap a planet to explore' : 'Click a planet to explore'}
+          {isMobile ? 'Tap a planet for its resume section' : 'Click a planet for its resume section'}
           <button
             onClick={() => {
               posthog.capture('scene_hint_dismissed');
@@ -226,7 +234,7 @@ export default function SceneCanvas({ sceneGraph, isMobile }: SceneCanvasProps) 
           primaryLabel={primaryLabel}
           onBack={state.mode === 'planet' ? backToSystem : undefined}
           secondaryAction={secondaryAction}
-          navigating={navigating && primaryLabel === 'Open'}
+          navigating={navigating && primaryLabel.startsWith('Open')}
         />
       )}
     </div>
