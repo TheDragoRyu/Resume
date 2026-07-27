@@ -184,4 +184,5 @@ The previously recorded resume-content issues are resolved:
 - the profile role is now `Senior Game Developer`;
 - Experience now records the LILA and Audify roles supplied from LinkedIn, including progression to Senior Unity Engineer;
 - the placeholder employer and unresolved placeholder project links were removed; and
-- Contact now uses validated structured content for its introduction, email, social profiles, location, availability, metadata, and responsive visual cards.
+- Contact now uses validated structured content for its introduction, email, social profiles, location, availability, metadata, and responsive visual cards; and
+- CMS-managed profile and project images now resolve under the GitHub Pages `/Resume` base path.

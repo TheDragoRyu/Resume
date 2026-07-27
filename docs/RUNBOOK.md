@@ -40,6 +40,22 @@ All content lives in `src/data/` as Markdown files with frontmatter. See `src/co
 4. Add alt text whenever a project cover image is configured, then save. Pages CMS creates an attributed Git commit.
 5. Check the GitHub Actions deployment. Invalid content or missing image references fail validation and leave the previous successful deployment live.
 
+#### Updating the profile photo
+
+1. Choose **Profile and landing page** in Pages CMS.
+2. Use **Profile photo** to upload or select an AVIF, JPEG, PNG, or WebP image. A square image works best in the circular Resume header.
+3. Save the Profile entry. Pages CMS may create one commit for the media upload and another for the Profile reference.
+4. Confirm that the resulting GitHub Actions deployment succeeds.
+5. Open `/resume/` on the deployed site and verify the new photo; the landing page does not currently render it.
+
+Pages CMS stores the file under `public/images` and writes a root-relative `/images/...` value to `src/data/intro/introduction.md`. During a project-site build, the content loader adds `NEXT_PUBLIC_BASE_PATH`, producing `/Resume/images/...` without changing the Markdown value.
+
+If the photo does not appear:
+
+- confirm that the referenced file exists under `public/images` and is committed;
+- confirm that both the media and Profile commits reached `main` and that the deployment succeeded; and
+- keep the frontmatter value as `/images/...`; do not manually add `/Resume`, because the build adds the configured base path.
+
 #### Updating Contact details
 
 1. Choose **Contact page** in Pages CMS.

@@ -94,7 +94,7 @@ If WebGL is unavailable, the scene becomes a readable grid of links to the same 
 
 The resume page provides:
 
-- a profile header with the resume title, candidate name, role, and an optional validated image;
+- a profile header with the resume title, candidate name, role, and an optional Pages CMS-managed image that resolves correctly on project-site base paths;
 - a desktop sticky table of contents;
 - an active-section highlight as the visitor scrolls;
 - a collapsible mobile “Jump to section” menu;

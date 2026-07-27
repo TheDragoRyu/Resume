@@ -16,6 +16,57 @@ import type {
 
 const DATA_DIR = path.join(process.cwd(), 'src', 'data');
 
+/** Prefix local public assets with the configured deployment base path */
+function resolvePublicAssetPath(value: string): string {
+  const basePath = (process.env.NEXT_PUBLIC_BASE_PATH || '').replace(/\/+$/, '');
+
+  if (
+    !basePath ||
+    !value.startsWith('/') ||
+    value === basePath ||
+    value.startsWith(`${basePath}/`)
+  ) {
+    return value;
+  }
+
+  return `${basePath}${value}`;
+}
+
+/** Map content-managed local asset paths to deployment-safe URLs */
+function resolveContentAssetPaths<T extends BaseFrontmatter>(
+  item: ContentItem<T>
+): ContentItem<T> {
+  const frontmatter = item.frontmatter;
+
+  if (frontmatter.type === 'intro') {
+    const intro = frontmatter as T & IntroFrontmatter;
+    if (!intro.photo) return item;
+
+    return {
+      ...item,
+      frontmatter: {
+        ...intro,
+        photo: resolvePublicAssetPath(intro.photo),
+      },
+    };
+  }
+
+  if (frontmatter.type === 'project') {
+    const project = frontmatter as T & ProjectFrontmatter;
+    if (!project.image) return item;
+
+    return {
+      ...item,
+      frontmatter: {
+        ...project,
+        image: resolvePublicAssetPath(project.image),
+      },
+    };
+  }
+
+  return item;
+}
+
 /** Recursively find all .md files under a directory */
 function findMarkdownFiles(dir: string): string[] {
   const files: string[] = [];
@@ -60,7 +111,8 @@ export async function getContentByType<T extends BaseFrontmatter>(
   const all = await getAllContent();
   return all
     .filter((item) => item.frontmatter.type === type)
-    .sort((a, b) => a.frontmatter.order - b.frontmatter.order) as ContentItem<T>[];
+    .sort((a, b) => a.frontmatter.order - b.frontmatter.order)
+    .map((item) => resolveContentAssetPaths(item as ContentItem<T>));
 }
 
 /** Get a single content item by slug */
@@ -68,9 +120,11 @@ export async function getContentBySlug<T extends BaseFrontmatter>(
   slug: string
 ): Promise<ContentItem<T> | undefined> {
   const all = await getAllContent();
-  return all.find((item) => item.frontmatter.slug === slug) as
+  const item = all.find((candidate) => candidate.frontmatter.slug === slug) as
     | ContentItem<T>
     | undefined;
+
+  return item ? resolveContentAssetPaths(item) : undefined;
 }
 
 /** Get the intro content */

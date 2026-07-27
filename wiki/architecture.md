@@ -89,7 +89,7 @@ Content types add their own fields:
 - page: general standalone page content; and
 - contact page: required description, introduction, email card, social-link list, location, and availability fields.
 
-The loader recursively reads `src/data/`, parses frontmatter, renders Markdown where present, sorts records by `order`, and provides typed queries for routes and navigation. A required Contact loader supplies its page, navigation label, and metadata from one typed record.
+The loader recursively reads `src/data/`, parses frontmatter, renders Markdown where present, sorts records by `order`, and provides typed queries for routes and navigation. A required Contact loader supplies its page, navigation label, and metadata from one typed record. Typed queries also prefix CMS-managed profile and project-cover paths with the configured deployment base path without changing their Markdown source values.
 
 The validator rejects:
 
