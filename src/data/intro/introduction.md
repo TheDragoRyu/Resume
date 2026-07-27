@@ -6,7 +6,6 @@ type: intro
 order: 0
 description: Game engineer building products that matter.
 role: Game Developers
-photo: /images/profile.jpg
 orbit:
   size: 2.0
   color: "#00fff0"

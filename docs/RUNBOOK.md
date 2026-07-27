@@ -20,12 +20,41 @@ npm run start    # Serves /out locally
 
 All content lives in `src/data/` as Markdown files with frontmatter. See `src/content/content-types.ts` for the schema.
 
-### Adding a project
+### Visual editor (recommended)
+
+[Pages CMS](https://app.pagescms.org) reads `.pages.yml` and edits the existing Markdown and media files through GitHub. The public site remains a static export and contains no admin route, CMS token, or secret.
+
+#### One-time setup
+
+1. Commit and push `.pages.yml` to the repository's default branch.
+2. Open [app.pagescms.org](https://app.pagescms.org).
+3. Sign in with the GitHub account that can edit this repository. Enable two-factor authentication on that account.
+4. Install the Pages CMS GitHub App for **only this repository**, not every repository in the account.
+5. Open `TheDragoRyu/Resume` on the `main` branch. The Profile, Resume sections, Projects, Contact page, and Site images editors will appear.
+
+#### Routine updates
+
+1. Open the repository in Pages CMS and confirm that the selected branch is `main`.
+2. Choose Profile, Resume sections, Projects, Contact page, or Site images.
+3. Edit fields in the form. Rich-text fields support formatted content and image uploads.
+4. Add alt text whenever a project cover image is configured, then save. Pages CMS creates an attributed Git commit.
+5. Check the GitHub Actions deployment. Invalid content or missing image references fail validation and leave the previous successful deployment live.
+
+#### Security and recovery
+
+- Keep the GitHub App limited to this repository and revoke it from GitHub settings when it is no longer needed.
+- Do not place tokens, private contact data, or secrets in content fields or uploaded files; all committed content and media are public.
+- Fixed profile/contact files and resume sections cannot be created, renamed, or deleted from the editor. Project renames are disabled; Git history can recover an accidental project or media deletion.
+- Review the commit diff in GitHub for sensitive or high-impact changes. The editor does not bypass repository history or build validation.
+
+### Manual fallback: adding a project
+
 1. Create `src/data/projects/my-project.md` with required frontmatter.
 2. Set `categoryId` to a valid category id.
 3. Run `npm run validate` to check.
 
-### Adding a resume category
+### Manual fallback: adding a resume category
+
 1. Create `src/data/categories/my-category.md` with required frontmatter.
 2. Run `npm run validate` to check.
 

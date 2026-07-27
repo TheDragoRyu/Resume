@@ -1,0 +1,241 @@
+media:
+  - name: images
+    label: Site images
+    input: public/images
+    output: /images
+    extensions: [avif, jpeg, jpg, png, webp]
+    categories: [image]
+    rename: safe
+    commit:
+      identity: user
+      templates:
+        create: "content(media): add {filename}"
+        update: "content(media): update {filename}"
+        delete: "content(media): remove {filename}"
+        rename: "content(media): rename {oldFilename} to {newFilename}"
+
+settings:
+  hide: true
+  content:
+    merge: true
+  commit:
+    identity: user
+    templates:
+      create: "content: add {name}"
+      update: "content: update {name}"
+      delete: "content: remove {name}"
+      rename: "content: rename {oldFilename} to {newFilename}"
+
+content:
+  - name: profile
+    label: Profile and landing page
+    type: file
+    path: src/data/intro/introduction.md
+    format: yaml-frontmatter
+    operations:
+      create: false
+      rename: false
+      delete: false
+    fields:
+      - name: title
+        label: Display name
+        type: string
+        required: true
+      - name: role
+        label: Professional title
+        type: string
+        required: true
+      - name: description
+        label: Short introduction
+        type: text
+        required: true
+        options:
+          maxlength: 240
+      - name: photo
+        label: Profile photo
+        type: image
+        description: Upload a JPG, PNG, WebP, or AVIF image. A square image works best.
+        options:
+          media: images
+          extensions: [avif, jpeg, jpg, png, webp]
+          rename: safe
+
+  - name: resume
+    label: Resume sections
+    type: collection
+    path: src/data/categories
+    format: yaml-frontmatter
+    subfolders: false
+    operations:
+      create: false
+      rename: false
+      delete: false
+    view:
+      fields: [title, order, description]
+      primary: title
+      sort: [order, title]
+      default:
+        sort: order
+        order: asc
+    fields:
+      - name: title
+        label: Section title
+        type: string
+        required: true
+      - name: order
+        label: Display order
+        type: number
+        required: true
+        description: Lower numbers appear first.
+      - name: description
+        label: Section summary
+        type: text
+        required: true
+        options:
+          maxlength: 240
+      - name: body
+        label: Resume details
+        type: rich-text
+        required: true
+        options:
+          format: markdown
+          media: images
+          rename: safe
+
+  - name: projects
+    label: Projects
+    type: collection
+    path: src/data/projects
+    format: yaml-frontmatter
+    subfolders: false
+    filename:
+      template: "{slug}.md"
+      field: create
+    operations:
+      create: true
+      rename: false
+      delete: true
+    view:
+      fields: [title, order, featured, categoryId]
+      primary: title
+      sort: [order, title]
+      search: [title, description, tags]
+      default:
+        sort: order
+        order: asc
+    fields:
+      - name: id
+        label: Stable project ID
+        type: string
+        required: true
+        pattern:
+          regex: "^proj-[a-z0-9]+(?:-[a-z0-9]+)*$"
+          message: Use "proj-" followed by lowercase words and hyphens.
+        description: Set this once when creating a project, for example proj-my-game.
+      - name: slug
+        label: URL slug
+        type: string
+        required: true
+        pattern:
+          regex: "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+          message: Use lowercase words separated by hyphens.
+        description: This becomes /projects/your-slug. Changing it changes the public URL.
+      - name: title
+        label: Project title
+        type: string
+        required: true
+      - name: type
+        type: string
+        default: project
+        hidden: true
+        required: true
+      - name: order
+        label: Display order
+        type: number
+        required: true
+        description: Lower numbers appear first.
+      - name: description
+        label: Card summary
+        type: text
+        required: true
+        options:
+          maxlength: 300
+      - name: categoryId
+        label: Resume section
+        type: reference
+        required: true
+        options:
+          collection: resume
+          search: "title,id"
+          value: "{id}"
+          label: "{title}"
+      - name: image
+        label: Cover image
+        type: image
+        description: Optional project image shown on cards and the case study page.
+        options:
+          media: images
+          extensions: [avif, jpeg, jpg, png, webp]
+          rename: safe
+      - name: imageAlt
+        label: Cover image description
+        type: string
+        description: Required when a cover image is set. Describe the image for screen readers.
+      - name: featured
+        label: Featured project
+        type: boolean
+        default: false
+      - name: tags
+        label: Technologies and tags
+        type: string
+        list: true
+      - name: links
+        label: Project links
+        type: object
+        fields:
+          - name: github
+            label: GitHub URL
+            type: string
+          - name: demo
+            label: Live demo URL
+            type: string
+          - name: writeup
+            label: Write-up URL
+            type: string
+      - name: body
+        label: Case study
+        type: rich-text
+        required: true
+        options:
+          format: markdown
+          media: images
+          rename: safe
+
+  - name: contact
+    label: Contact page
+    type: file
+    path: src/data/pages/contact.md
+    format: yaml-frontmatter
+    operations:
+      create: false
+      rename: false
+      delete: false
+    fields:
+      - name: title
+        label: Page title
+        type: string
+        required: true
+      - name: description
+        label: Search and social description
+        type: text
+        required: true
+        options:
+          maxlength: 240
+      - name: body
+        label: Contact details
+        type: rich-text
+        required: true
+        options:
+          format: markdown
+          media: images
+          rename: safe

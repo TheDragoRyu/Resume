@@ -1,4 +1,6 @@
-import type { BaseFrontmatter, ProjectFrontmatter } from './content-types';
+import fs from 'fs';
+import path from 'path';
+import type { BaseFrontmatter, IntroFrontmatter, ProjectFrontmatter } from './content-types';
 import type { ContentItem } from './content-types';
 
 export interface ValidationError {
@@ -15,6 +17,8 @@ const REQUIRED_BASE_FIELDS: (keyof BaseFrontmatter)[] = [
 ];
 
 const VALID_TYPES = ['intro', 'category', 'project', 'page'];
+const KEBAB_CASE_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const ALLOWED_IMAGE_EXTENSIONS = new Set(['.avif', '.jpeg', '.jpg', '.png', '.webp']);
 
 export function validateContent(items: ContentItem[]): ValidationError[] {
   const errors: ValidationError[] = [];
@@ -42,6 +46,27 @@ export function validateContent(items: ContentItem[]): ValidationError[] {
           message: `Missing required field: "${field}"`,
         });
       }
+    }
+
+    if (fm.slug && !KEBAB_CASE_PATTERN.test(fm.slug)) {
+      errors.push({
+        file: label,
+        message: 'Slug must use lowercase kebab-case.',
+      });
+    }
+
+    if (fm.id && !KEBAB_CASE_PATTERN.test(fm.id)) {
+      errors.push({
+        file: label,
+        message: 'ID must use lowercase kebab-case.',
+      });
+    }
+
+    if (fm.order !== undefined && (!Number.isInteger(fm.order) || fm.order < 0)) {
+      errors.push({
+        file: label,
+        message: 'Order must be a non-negative integer.',
+      });
     }
 
     // Check valid type
@@ -90,8 +115,59 @@ export function validateContent(items: ContentItem[]): ValidationError[] {
           message: `Project references unknown categoryId: "${projectFm.categoryId}"`,
         });
       }
+
+      if (projectFm.image) {
+        validateImageReference(projectFm.image, 'image', label, errors);
+        if (!projectFm.imageAlt?.trim()) {
+          errors.push({
+            file: label,
+            message: 'Project cover images require a non-empty "imageAlt" description.',
+          });
+        }
+      }
+    }
+
+    if (fm.type === 'intro') {
+      const introFm = fm as IntroFrontmatter;
+      if (introFm.photo) validateImageReference(introFm.photo, 'photo', label, errors);
     }
   }
 
   return errors;
+}
+
+function validateImageReference(
+  value: string,
+  field: string,
+  label: string,
+  errors: ValidationError[]
+): void {
+  if (
+    !value.startsWith('/images/') ||
+    value.includes('..') ||
+    value.includes('\\')
+  ) {
+    errors.push({
+      file: label,
+      message: `"${field}" must reference a local file under /images/.`,
+    });
+    return;
+  }
+
+  const extension = path.extname(value).toLowerCase();
+  if (!ALLOWED_IMAGE_EXTENSIONS.has(extension)) {
+    errors.push({
+      file: label,
+      message: `"${field}" must use AVIF, JPEG, PNG, or WebP.`,
+    });
+    return;
+  }
+
+  const filePath = path.resolve(process.cwd(), 'public', `.${value}`);
+  if (!fs.existsSync(filePath)) {
+    errors.push({
+      file: label,
+      message: `"${field}" references a missing file: ${value}`,
+    });
+  }
 }

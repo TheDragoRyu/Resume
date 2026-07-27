@@ -1,9 +1,12 @@
+import Image from 'next/image';
 import TrackClick from '@/components/ui/TrackClick';
 
 interface CaseStudyBodyProps {
   title: string;
   description: string;
   bodyHtml: string;
+  image?: string;
+  imageAlt?: string;
   tags: string[];
   links?: {
     github?: string;
@@ -16,6 +19,8 @@ export default function CaseStudyBody({
   title,
   description,
   bodyHtml,
+  image,
+  imageAlt,
   tags,
   links,
 }: CaseStudyBodyProps) {
@@ -23,6 +28,19 @@ export default function CaseStudyBody({
     <article>
       <h1 className="text-4xl font-bold text-accent text-glow-cyan">{title}</h1>
       <p className="mt-2 text-lg text-cyan-100/70">{description}</p>
+
+      {image && imageAlt && (
+        <div className="relative mt-8 aspect-video overflow-hidden rounded-xl border border-accent/20">
+          <Image
+            src={image}
+            alt={imageAlt}
+            fill
+            sizes="(min-width: 768px) 768px, 100vw"
+            className="object-cover"
+            priority
+          />
+        </div>
+      )}
 
       {tags.length > 0 && (
         <div className="mt-4 flex flex-wrap gap-2">

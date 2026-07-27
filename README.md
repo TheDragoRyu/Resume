@@ -56,6 +56,10 @@ Strict folder boundaries are enforced — see [CLAUDE.md](CLAUDE.md) for the ful
 
 All resume and project content lives in `src/data/` as Markdown files with required frontmatter (`id`, `slug`, `title`, `type`, `order`). The build pipeline validates every file against the schema and fails on violations.
 
+Routine updates are made through the [Pages CMS editor](https://app.pagescms.org), which provides authenticated forms, rich-text editing, and media uploads while committing the same Markdown files to GitHub. No CMS code, credentials, or content database is shipped with the public website.
+
+Follow the [content editing runbook](docs/RUNBOOK.md#visual-editor-recommended) for one-time access setup and everyday use.
+
 ```
 src/data/
 ├── intro/           # Site introduction metadata
@@ -64,7 +68,7 @@ src/data/
 └── pages/           # contact.md and other page content
 ```
 
-To add a project, create a new `.md` file in `src/data/projects/` with valid frontmatter and a `categoryId` referencing an existing category.
+Use the visual editor to update the profile, resume, projects, contact details, and images. Direct Markdown editing remains available as a maintainer fallback.
 
 ## Routes
 

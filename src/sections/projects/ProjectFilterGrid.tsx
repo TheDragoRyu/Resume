@@ -84,6 +84,8 @@ export default function ProjectFilterGrid({ projects, allTags }: ProjectFilterGr
               slug={project.frontmatter.slug}
               title={project.frontmatter.title}
               description={project.frontmatter.description || ''}
+              image={project.frontmatter.image}
+              imageAlt={project.frontmatter.imageAlt}
               tags={project.frontmatter.tags || []}
               featured={project.frontmatter.featured || false}
             />

@@ -332,3 +332,37 @@ src/data/projects/*.md      (committed source of truth)
 - Claude CLI must be installed for generation (fetch works standalone).
 - Unauthenticated GitHub API is limited to 60 req/hr (sufficient for small repo sets; `GITHUB_TOKEN` raises this to 5000).
 - Generated content requires human review before committing.
+
+## 2026-07-27: Git-Backed Visual Content and Media Editor
+
+**Decision:** Configure Pages CMS as an external, GitHub-authenticated editing layer over the existing Markdown content and repository-hosted media.
+
+**Changes:**
+
+- Added a root `.pages.yml` that maps Profile, Resume sections, Projects, Contact, and Site images to structured forms.
+- Enabled rich-text Markdown editing and image uploads under `public/images`.
+- Preserved unexposed technical frontmatter with merge-on-save behavior and protected fixed files from destructive editor operations.
+- Added optional project cover-image and alternative-text fields, rendered on project cards and case-study pages and reused in project Open Graph metadata.
+- Removed the known-broken profile-photo reference; a valid profile photo can now be uploaded from the editor.
+- Extended content validation for kebab-case IDs/slugs, non-negative integer ordering, safe local image paths and extensions, file existence, and project-image alt text.
+- Hardened forced GitHub-project regeneration so editor-managed cover media is preserved and invalid output restores the previous file instead of deleting it.
+
+**Security model:**
+
+- GitHub/Pages CMS handles authentication; no credentials, admin bundle, content API, or secret are included in the static export.
+- The runbook requires installing the GitHub App for this repository only and recommends GitHub two-factor authentication.
+- Uploads are constrained to AVIF, JPEG, PNG, and WebP under one public directory; executable SVG uploads are not accepted.
+- Saves remain attributable Git commits, build validation gates deployment, and Git history provides recovery.
+
+**Rationale:**
+
+- An embedded admin page would still require an OAuth service or secret-bearing backend, which violates the static-only architecture.
+- A Git-backed editor leaves `src/data/` as the single source of truth and preserves the existing GitHub Pages deployment flow.
+- Forms and a media manager remove the need to find and edit individual Markdown files for routine updates.
+
+**Trade-offs:**
+
+- The hosted editor is a third-party service with repository write access; access should remain repository-scoped and be revoked when unused.
+- Saves target the selected Git branch directly. Invalid edits can create a failed workflow, although the previous successful deployment remains live.
+- The visual schema must be updated when user-facing frontmatter fields change.
+- Links and images embedded directly inside rich Markdown bodies are not yet included in local-asset validation.

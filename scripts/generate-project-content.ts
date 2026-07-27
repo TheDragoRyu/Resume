@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { execFile } from 'child_process';
+import matter from 'gray-matter';
 import { getAllContent } from '../src/content/content-loader';
 import { validateContent } from '../src/content/content-validator';
 import type { ContentItem, ProjectFrontmatter } from '../src/content/content-types';
@@ -181,7 +182,8 @@ function buildFrontmatter(
   repo: CachedRepo,
   defaults: FeaturedReposDefaults,
   aiTags: string[],
-  aiDescription: string
+  aiDescription: string,
+  existingProject?: Partial<ProjectFrontmatter>
 ): string {
   const slug = deriveSlug(repo);
   const title = deriveTitle(repo);
@@ -202,6 +204,12 @@ function buildFrontmatter(
     `categoryId: ${categoryId}`,
     `featured: ${featured}`,
   ];
+  if (existingProject?.image) {
+    lines.push(`image: ${JSON.stringify(existingProject.image)}`);
+    if (existingProject.imageAlt) {
+      lines.push(`imageAlt: ${JSON.stringify(existingProject.imageAlt)}`);
+    }
+  }
 
   if (tags.length > 0) {
     lines.push('tags:');
@@ -381,6 +389,13 @@ async function main() {
       continue;
     }
 
+    const existingContent = fs.existsSync(filePath)
+      ? fs.readFileSync(filePath, 'utf-8')
+      : undefined;
+    const existingProject = existingContent
+      ? (matter(existingContent).data as Partial<ProjectFrontmatter>)
+      : undefined;
+
     console.log(`Generating content for ${slug}...`);
 
     const userPrompt = buildUserPrompt(repo);
@@ -410,7 +425,13 @@ async function main() {
     const cleanBody = stripMetaSections(body);
 
     // Build frontmatter with AI tags and description
-    const frontmatter = buildFrontmatter(repo, config.defaults, aiTags, aiDescription);
+    const frontmatter = buildFrontmatter(
+      repo,
+      config.defaults,
+      aiTags,
+      aiDescription,
+      existingProject
+    );
 
     // Assemble full file
     const fullContent = `${frontmatter}\n\n${cleanBody}\n`;
@@ -424,9 +445,13 @@ async function main() {
       console.error(
         `  Validation failed for ${slug}:\n${validation.errors.map((e) => `    ${e}`).join('\n')}`
       );
-      // Remove the invalid file
-      fs.unlinkSync(filePath);
-      console.error(`  Removed invalid file: ${filePath}`);
+      if (existingContent !== undefined) {
+        fs.writeFileSync(filePath, existingContent);
+        console.error(`  Restored previous content: ${filePath}`);
+      } else {
+        fs.unlinkSync(filePath);
+        console.error(`  Removed invalid file: ${filePath}`);
+      }
       continue;
     }
 

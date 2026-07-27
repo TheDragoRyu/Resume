@@ -35,6 +35,8 @@ export interface CategoryFrontmatter extends BaseFrontmatter {
 export interface ProjectFrontmatter extends BaseFrontmatter {
   type: 'project';
   categoryId: string;
+  image?: string;
+  imageAlt?: string;
   tags?: string[];
   featured?: boolean;
   links?: {

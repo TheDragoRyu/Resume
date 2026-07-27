@@ -30,7 +30,14 @@ export async function generateMetadata({
     openGraph: {
       title: project.frontmatter.title,
       description: project.frontmatter.description,
-      images: [{ url: '/og-default.png', width: 1200, height: 630 }],
+      images: project.frontmatter.image
+        ? [
+            {
+              url: project.frontmatter.image,
+              alt: project.frontmatter.imageAlt || project.frontmatter.title,
+            },
+          ]
+        : [{ url: '/og-default.png', width: 1200, height: 630 }],
     },
   };
 }
@@ -57,6 +64,8 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
         title={fm.title}
         description={fm.description || ''}
         bodyHtml={project.body}
+        image={fm.image}
+        imageAlt={fm.imageAlt}
         tags={fm.tags || []}
         links={fm.links}
       />
