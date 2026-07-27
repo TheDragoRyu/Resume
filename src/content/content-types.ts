@@ -52,12 +52,40 @@ export interface PageFrontmatter extends BaseFrontmatter {
   type: 'page';
 }
 
+/** A named external contact link */
+export interface ContactLink {
+  label: string;
+  url: string;
+}
+
+/** Structured frontmatter for the contact page */
+export interface ContactFrontmatter extends PageFrontmatter {
+  description: string;
+  introHeading: string;
+  intro: string;
+  email: {
+    heading: string;
+    description: string;
+    address: string;
+  };
+  social: {
+    heading: string;
+    links: ContactLink[];
+  };
+  location: {
+    heading: string;
+    text: string;
+    availability: string;
+  };
+}
+
 /** Union of all frontmatter types */
 export type ContentFrontmatter =
   | IntroFrontmatter
   | CategoryFrontmatter
   | ProjectFrontmatter
-  | PageFrontmatter;
+  | PageFrontmatter
+  | ContactFrontmatter;
 
 /** A parsed content item with frontmatter and rendered HTML body */
 export interface ContentItem<T extends BaseFrontmatter = BaseFrontmatter> {

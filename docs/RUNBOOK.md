@@ -40,6 +40,18 @@ All content lives in `src/data/` as Markdown files with frontmatter. See `src/co
 4. Add alt text whenever a project cover image is configured, then save. Pages CMS creates an attributed Git commit.
 5. Check the GitHub Actions deployment. Invalid content or missing image references fail validation and leave the previous successful deployment live.
 
+#### Updating Contact details
+
+1. Choose **Contact page** in Pages CMS.
+2. Use **Page title** and **Search and social description** for the page heading and metadata.
+3. Use **Introduction heading** and **Introduction** for the opening copy.
+4. Edit **Email card** to change its heading, supporting text, or email address.
+5. Edit **Social links card** to add, remove, reorder, or rename HTTPS links. Keep at least one link.
+6. Edit **Location card** to change the displayed location and remote-work availability.
+7. Save and check the GitHub Actions deployment.
+
+These controls write structured frontmatter in `src/data/pages/contact.md`. Keep the Markdown body empty so the form and visual card layout stay synchronized.
+
 #### Security and recovery
 
 - Keep the GitHub App limited to this repository and revoke it from GitHub settings when it is no longer needed.

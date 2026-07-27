@@ -1,14 +1,22 @@
 import type { Metadata } from 'next';
-import { getPageOrThrow } from '@/content/content-loader';
+import { getContactPage } from '@/content/content-loader';
 import Breadcrumb from '@/components/ui/Breadcrumb';
 
-export const metadata: Metadata = {
-  title: 'Contact',
-  description: 'Get in touch — reach out for collaboration, questions, or just to say hello.',
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const page = await getContactPage();
+  const { title, description } = page.frontmatter;
+
+  return {
+    title,
+    description,
+    openGraph: { title, description },
+    twitter: { title, description },
+  };
+}
 
 export default async function ContactPage() {
-  const page = await getPageOrThrow('contact');
+  const page = await getContactPage();
+  const { introHeading, intro, email, social, location } = page.frontmatter;
 
   return (
     <div className="relative isolate overflow-hidden">
@@ -22,7 +30,7 @@ export default async function ContactPage() {
       />
 
       <div className="mx-auto max-w-5xl px-4 py-12 sm:py-16">
-        <Breadcrumb items={[{ label: 'Contact' }]} />
+        <Breadcrumb items={[{ label: page.frontmatter.title }]} />
 
         <section className="relative overflow-hidden rounded-3xl border border-accent/20 bg-surface-raised/80 shadow-2xl shadow-accent/5 backdrop-blur-sm">
           <div
@@ -36,17 +44,61 @@ export default async function ContactPage() {
                 {page.frontmatter.title}
               </h1>
 
-              <div
-                className="prose prose-invert mt-8 max-w-none
-                  prose-h2:mb-4 prose-h2:text-2xl prose-h2:text-cyan-100
-                  prose-h3:mb-3 prose-h3:mt-10 prose-h3:border-l-2 prose-h3:border-neon-pink prose-h3:pl-3 prose-h3:text-lg prose-h3:text-neon-pink
-                  prose-p:max-w-2xl prose-p:leading-8 prose-p:text-cyan-100/70
-                  prose-a:inline-flex prose-a:min-h-11 prose-a:items-center prose-a:rounded-lg prose-a:border prose-a:border-accent/30 prose-a:bg-accent/5 prose-a:px-4 prose-a:py-2 prose-a:font-bold prose-a:text-accent prose-a:no-underline prose-a:transition-colors
-                  hover:prose-a:border-accent/70 hover:prose-a:bg-accent/10 hover:prose-a:text-accent-hover
-                  prose-ul:my-0 prose-ul:flex prose-ul:list-none prose-ul:flex-wrap prose-ul:gap-3 prose-ul:pl-0
-                  prose-li:m-0 prose-li:p-0 prose-li:before:hidden"
-                dangerouslySetInnerHTML={{ __html: page.body }}
-              />
+              <div className="mt-8">
+                <h2 className="text-2xl font-semibold text-cyan-100">
+                  {introHeading}
+                </h2>
+                <p className="mt-4 max-w-2xl leading-8 text-cyan-100/70">
+                  {intro}
+                </p>
+
+                <div className="mt-10 grid gap-4 sm:grid-cols-2">
+                  <article className="rounded-2xl border border-accent/15 bg-surface-overlay/40 p-5">
+                    <h3 className="border-l-2 border-neon-pink pl-3 text-lg font-semibold text-neon-pink">
+                      {email.heading}
+                    </h3>
+                    <p className="mt-4 leading-7 text-cyan-100/65">
+                      {email.description}
+                    </p>
+                    <a
+                      href={`mailto:${email.address}`}
+                      className="mt-4 inline-flex min-h-11 items-center break-all rounded-lg border border-accent/30 bg-accent/5 px-4 py-2 font-bold text-accent transition-colors hover:border-accent/70 hover:bg-accent/10 hover:text-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                    >
+                      {email.address}
+                    </a>
+                  </article>
+
+                  <article className="rounded-2xl border border-accent/15 bg-surface-overlay/40 p-5">
+                    <h3 className="border-l-2 border-neon-pink pl-3 text-lg font-semibold text-neon-pink">
+                      {social.heading}
+                    </h3>
+                    <ul className="mt-4 flex flex-wrap gap-3">
+                      {social.links.map((link) => (
+                        <li key={link.url}>
+                          <a
+                            href={link.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex min-h-11 items-center rounded-lg border border-accent/30 bg-accent/5 px-4 py-2 font-bold text-accent transition-colors hover:border-accent/70 hover:bg-accent/10 hover:text-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                          >
+                            {link.label}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </article>
+
+                  <article className="rounded-2xl border border-accent/15 bg-surface-overlay/40 p-5 sm:col-span-2">
+                    <h3 className="border-l-2 border-neon-pink pl-3 text-lg font-semibold text-neon-pink">
+                      {location.heading}
+                    </h3>
+                    <p className="mt-4 text-cyan-100/80">{location.text}</p>
+                    <p className="mt-2 leading-7 text-cyan-100/65">
+                      {location.availability}
+                    </p>
+                  </article>
+                </div>
+              </div>
             </div>
 
             <div

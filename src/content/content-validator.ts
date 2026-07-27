@@ -1,6 +1,11 @@
 import fs from 'fs';
 import path from 'path';
-import type { BaseFrontmatter, IntroFrontmatter, ProjectFrontmatter } from './content-types';
+import type {
+  BaseFrontmatter,
+  ContactFrontmatter,
+  IntroFrontmatter,
+  ProjectFrontmatter,
+} from './content-types';
 import type { ContentItem } from './content-types';
 
 export interface ValidationError {
@@ -131,9 +136,86 @@ export function validateContent(items: ContentItem[]): ValidationError[] {
       const introFm = fm as IntroFrontmatter;
       if (introFm.photo) validateImageReference(introFm.photo, 'photo', label, errors);
     }
+
+    if (fm.type === 'page' && fm.slug === 'contact') {
+      validateContactPage(item, label, errors);
+    }
   }
 
   return errors;
+}
+
+function validateContactPage(
+  item: ContentItem,
+  label: string,
+  errors: ValidationError[]
+): void {
+  const fm = item.frontmatter as ContactFrontmatter;
+
+  const requiredFields: Array<[string, unknown]> = [
+    ['description', fm.description],
+    ['introHeading', fm.introHeading],
+    ['intro', fm.intro],
+    ['email.heading', fm.email?.heading],
+    ['email.description', fm.email?.description],
+    ['email.address', fm.email?.address],
+    ['social.heading', fm.social?.heading],
+    ['location.heading', fm.location?.heading],
+    ['location.text', fm.location?.text],
+    ['location.availability', fm.location?.availability],
+  ];
+
+  for (const [field, value] of requiredFields) {
+    if (typeof value !== 'string' || !value.trim()) {
+      errors.push({
+        file: label,
+        message: `Contact page is missing required field: "${field}"`,
+      });
+    }
+  }
+
+  if (
+    typeof fm.email?.address === 'string' &&
+    fm.email.address.trim() &&
+    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fm.email.address)
+  ) {
+    errors.push({ file: label, message: 'Contact email address is invalid.' });
+  }
+
+  const links = fm.social?.links;
+  if (!Array.isArray(links) || links.length === 0) {
+    errors.push({
+      file: label,
+      message: 'Contact page requires at least one social link.',
+    });
+  } else {
+    links.forEach((link, index) => {
+      if (typeof link?.label !== 'string' || !link.label.trim()) {
+        errors.push({ file: label, message: `Social link ${index + 1} needs a label.` });
+      }
+
+      if (typeof link?.url !== 'string' || !link.url.trim()) {
+        errors.push({ file: label, message: `Social link ${index + 1} needs a URL.` });
+        return;
+      }
+
+      try {
+        const url = new URL(link.url);
+        if (url.protocol !== 'https:') {
+          errors.push({ file: label, message: `Social link ${index + 1} must use HTTPS.` });
+        }
+      } catch {
+        errors.push({ file: label, message: `Social link ${index + 1} has an invalid URL.` });
+      }
+    });
+  }
+
+  if (item.rawContent.trim()) {
+    errors.push({
+      file: label,
+      message: 'Contact details must use structured frontmatter, not a Markdown body.',
+    });
+  }
 }
 
 function validateImageReference(

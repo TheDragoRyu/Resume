@@ -231,11 +231,85 @@ content:
         required: true
         options:
           maxlength: 240
-      - name: body
-        label: Contact details
-        type: rich-text
+      - name: introHeading
+        label: Introduction heading
+        type: string
+        required: true
+      - name: intro
+        label: Introduction
+        type: text
         required: true
         options:
-          format: markdown
-          media: images
-          rename: safe
+          maxlength: 400
+      - name: email
+        label: Email card
+        type: object
+        required: true
+        fields:
+          - name: heading
+            label: Heading
+            type: string
+            required: true
+          - name: description
+            label: Description
+            type: text
+            required: true
+            options:
+              maxlength: 240
+          - name: address
+            label: Email address
+            type: string
+            required: true
+            pattern:
+              regex: '^[^@ ]+@[^@ ]+\.[^@ ]+$'
+              message: Enter a valid email address.
+      - name: social
+        label: Social links card
+        type: object
+        required: true
+        fields:
+          - name: heading
+            label: Heading
+            type: string
+            required: true
+          - name: links
+            label: Social links
+            type: object
+            required: true
+            list:
+              min: 1
+              max: 6
+              collapsible:
+                collapsed: false
+                summary: '{label}'
+            fields:
+              - name: label
+                label: Link label
+                type: string
+                required: true
+              - name: url
+                label: HTTPS URL
+                type: string
+                required: true
+                pattern:
+                  regex: '^https://.+$'
+                  message: Use a complete HTTPS URL.
+      - name: location
+        label: Location card
+        type: object
+        required: true
+        fields:
+          - name: heading
+            label: Heading
+            type: string
+            required: true
+          - name: text
+            label: Location
+            type: string
+            required: true
+          - name: availability
+            label: Availability
+            type: text
+            required: true
+            options:
+              maxlength: 240

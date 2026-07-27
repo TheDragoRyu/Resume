@@ -1,5 +1,5 @@
 
-# Resume-Website — UX Patterns & Standards
+# Resume Website — UX Patterns & Standards
 
 **Purpose:** This file is the implementation playbook. It turns pillars into consistent UI patterns, interaction rules, and fallback flows.
 

@@ -30,7 +30,7 @@
 **Decision:** The WebGL solar system is a visual enhancement layer, never a navigation requirement.
 
 **Rationale:**
-- Follows Pillar 1 (Utility First, Magic Second) from design-pillars.md.
+- Follows Pillar 1 (Utility First, Magic Second) from the [design pillars](../wiki/design-pillars.md).
 - 3D is loaded via `dynamic(() => import(...), { ssr: false })` — static HTML renders first.
 - Canvas is `aria-hidden="true"` — screen readers skip it entirely.
 - WebGL unavailability shows a fallback gradient; all navigation remains functional.
@@ -65,7 +65,7 @@
 
 ## 2026-03-03: UX Standards Compliance Fixes
 
-**Decision:** Five changes to align the implementation with ux-standards.md, filtered through design-pillars.md.
+**Decision:** Five changes to align the implementation with the [UX standards](../wiki/ux-standards.md), filtered through the [design pillars](../wiki/design-pillars.md).
 
 **Changes:**
 
@@ -112,7 +112,7 @@
 
 ## 2026-03-04: Design Pillars Audit — Compliance Fixes
 
-**Decision:** Fix 12 violations found during an audit against `design-pillars.md`, covering Pillars 2, 7, 8, and 9.
+**Decision:** Fix 12 violations found during an audit against the [design pillars](../wiki/design-pillars.md), covering Pillars 2, 7, 8, and 9.
 
 **Changes:**
 
@@ -167,7 +167,7 @@
 
 ## 2026-03-04: UX Audit — 26-Gap Fix
 
-**Decision:** Address all 26 gaps found during a project-wide UX audit against `ux-standards.md`.
+**Decision:** Address all 26 gaps found during a project-wide audit against the [UX standards](../wiki/ux-standards.md).
 
 **Changes:**
 
@@ -333,6 +333,29 @@ src/data/projects/*.md      (committed source of truth)
 - Unauthenticated GitHub API is limited to 60 req/hr (sufficient for small repo sets; `GITHUB_TOKEN` raises this to 5000).
 - Generated content requires human review before committing.
 
+## 2026-07-27: Consolidated Project Wiki
+
+**Decision:** Add a top-level `wiki/` as the canonical guide to the product problem, current architecture, shipped visitor experience, product standards, and unfinished work.
+
+**Changes:**
+
+- Added a wiki index plus dedicated problem-statement, architecture, feature, and roadmap pages.
+- Moved the existing design pillars and UX standards from the repository root into the wiki.
+- Extended the repository policy to define the new wiki boundary and its allowed document types.
+- Kept `docs/DECISIONS.md` and `docs/RUNBOOK.md` in `docs/` to preserve the repository's policy-defined history and operations boundary.
+- Linked the README, wiki, decision log, and runbook instead of duplicating their responsibilities.
+
+**Rationale:**
+
+- Product and implementation knowledge was distributed across root documents, source code, and the chronological decision log.
+- A current-state wiki makes shipped behavior and open work easier to find without rewriting historical decisions.
+- Explicit status language prevents deferred-but-completed work from being mistaken for an active backlog.
+
+**Trade-offs:**
+
+- Maintainers must update the feature and architecture pages when behavior changes.
+- The wiki summarizes the system while the decision log remains authoritative for historical rationale.
+
 ## 2026-07-27: Git-Backed Visual Content and Media Editor
 
 **Decision:** Configure Pages CMS as an external, GitHub-authenticated editing layer over the existing Markdown content and repository-hosted media.
@@ -366,3 +389,24 @@ src/data/projects/*.md      (committed source of truth)
 - Saves target the selected Git branch directly. Invalid edits can create a failed workflow, although the previous successful deployment remains live.
 - The visual schema must be updated when user-facing frontmatter fields change.
 - Links and images embedded directly inside rich Markdown bodies are not yet included in local-asset validation.
+
+## 2026-07-27: Structured Contact Editing
+
+**Decision:** Model the Contact page's visual content as typed frontmatter and expose matching nested fields in Pages CMS.
+
+**Changes:**
+
+- Replaced the Contact page's layout-dependent Markdown body with explicit introduction, email, social-link, and location fields.
+- Added a typed Contact loader and used its content for rendering, navigation, and page metadata.
+- Added build-time validation for required Contact fields, the email address, HTTPS social URLs, and an empty Markdown body.
+- Replaced the generic Contact rich-text field in `.pages.yml` with nested object and list controls that correspond to the visual cards.
+
+**Rationale:**
+
+- Editors can update a specific visible detail without needing to preserve a hidden Markdown heading and list structure.
+- The typed schema keeps Pages CMS, the content source, and the rendered design synchronized while retaining `src/data/` as the source of truth.
+
+**Trade-offs:**
+
+- Adding another Contact card or field now requires coordinated schema, CMS configuration, validation, and component changes.
+- The Contact page no longer supports arbitrary rich-text body content; this intentionally protects the designed layout from structural drift.

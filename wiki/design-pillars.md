@@ -1,5 +1,5 @@
 
-# Resume-Website — Design Pillars
+# Resume Website — Design Pillars
 
 **Purpose:** This file is the project’s UI/UX constitution. If a design decision conflicts with a pillar, redesign it.
 

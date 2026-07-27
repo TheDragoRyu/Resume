@@ -54,6 +54,14 @@ This repository is **policy-driven**: every change MUST comply with the rules be
 ├── docs/                           # Architecture decisions + runbooks
 │   ├── DECISIONS.md
 │   └── RUNBOOK.md
+├── wiki/                           # Product and current-state documentation
+│   ├── README.md
+│   ├── problem-statement.md
+│   ├── architecture.md
+│   ├── features.md
+│   ├── roadmap.md
+│   ├── design-pillars.md
+│   └── ux-standards.md
 ├── .github/workflows/deploy.yml
 ├── next.config.ts
 ├── tailwind.config.ts
@@ -72,6 +80,7 @@ This repository is **policy-driven**: every change MUST comply with the rules be
 - `src/data/` MUST contain **only** the raw Markdown content source-of-truth files.
 - `src/content/` MUST contain **only** loader/mapper/validator code that transforms raw content into typed objects.
 - `src/utils/` MUST contain **only** pure functions (no React, no side effects).
+- `wiki/` MUST contain **only** product, architecture, feature, roadmap, and UX documentation.
 - `docs/DECISIONS.md` MUST be updated for any architectural or tooling decision.
 
 ---

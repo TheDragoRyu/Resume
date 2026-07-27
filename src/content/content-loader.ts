@@ -6,6 +6,7 @@ import remarkHtml from 'remark-html';
 import type {
   BaseFrontmatter,
   CategoryFrontmatter,
+  ContactFrontmatter,
   ContentItem,
   IntroFrontmatter,
   NavData,
@@ -105,12 +106,12 @@ export async function getNavData(): Promise<NavData> {
     getIntro(),
     getCategories(),
     getProjects(),
-    getPage('contact'),
+    getContactPage(),
   ]);
 
   return {
     siteTitle: intro.frontmatter.title,
-    contactLabel: contactPage?.frontmatter.title ?? 'Contact',
+    contactLabel: contactPage.frontmatter.title,
     resumeSections: categories.map((c) => ({
       href: `/resume#${c.frontmatter.slug}`,
       label: c.frontmatter.title,
@@ -136,6 +137,15 @@ export async function getPageOrThrow(
   const page = await getPage(slug);
   if (!page) {
     throw new Error(`Required page "${slug}" not found in src/data/pages/`);
+  }
+  return page;
+}
+
+/** Get the required structured contact page */
+export async function getContactPage(): Promise<ContentItem<ContactFrontmatter>> {
+  const page = await getContentBySlug<ContactFrontmatter>('contact');
+  if (!page) {
+    throw new Error('Required contact page not found in src/data/pages/');
   }
   return page;
 }

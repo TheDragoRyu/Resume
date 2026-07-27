@@ -52,6 +52,14 @@ src/
 
 Strict folder boundaries are enforced — see [CLAUDE.md](CLAUDE.md) for the full policy.
 
+## Documentation
+
+- [Project wiki](wiki/README.md) — problem statement, current architecture, user-facing features, roadmap, and product standards.
+- [Architecture decisions](docs/DECISIONS.md) — chronological technical and product decisions.
+- [Operations runbook](docs/RUNBOOK.md) — development, content, deployment, and project-sync procedures.
+
+The wiki is the canonical overview of current behavior and unfinished work. The decision log remains the historical record.
+
 ## Content System
 
 All resume and project content lives in `src/data/` as Markdown files with required frontmatter (`id`, `slug`, `title`, `type`, `order`). The build pipeline validates every file against the schema and fails on violations.
@@ -90,7 +98,7 @@ All routes are pre-generated at build time via static export.
 - **Accessibility baseline** — full keyboard navigation, screen reader support, `prefers-reduced-motion` respected, 44px+ touch targets
 - **Cyberpunk aesthetic** — neon glow effects, CRT scanlines, retro pixel font to reflect a game dev background
 
-See [docs/DECISIONS.md](docs/DECISIONS.md) for the full architectural decision log.
+See the [architecture wiki](wiki/architecture.md) for the current system and [docs/DECISIONS.md](docs/DECISIONS.md) for its full decision history.
 
 ## Deployment
 
