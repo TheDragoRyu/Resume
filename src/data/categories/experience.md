@@ -13,21 +13,21 @@ orbit:
   color: "#ff00ff"
 ---
 
-## Senior Unity Engineer — LILA Games
-**Feb 2026 – Present**
+## Senior Unity Engineer — LILA
+**Feb 2026 – Present · Bengaluru, Karnataka, India**
 
-- Lead and own multiple features in LILA Black
-- Implemented the Game's FTUE feature from start to finish — see [Project Alpha](/projects/project-alpha)
-- Setup a Custom FTUE Editor for faster iterations on the FTUE
+- Lead development and take end-to-end ownership of multiple features for BLACK.
+- Delivered the first-time user experience (FTUE) from concept to production.
+- Built a custom FTUE editor that enables faster content iteration.
 
-## Unity Engineer — LILA Games
-**Apr 2024 – Jan 2026**
+## Unity Developer — LILA
+**Apr 2024 – Jan 2026 · Bengaluru, Karnataka, India**
 
-- Built many of LILA Black's meta features like Clan, and House Customization — see [Project Beta](/projects/project-beta)
-- Help Implement combat features like Patrol Commander
+- Built core meta systems for BLACK, including clans and house customization.
+- Contributed to combat features, including Patrol Commander.
 
-## Junior Developer — AgencyX
-**Aug 2018 – May 2020**
+## Unity Developer — Audify
+**Jun 2023 – Apr 2024 · Bengaluru, Karnataka, India**
 
-- Developed responsive web applications for clients across e-commerce and media.
-- Implemented CI/CD pipelines reducing deployment time from hours to minutes — see [Project Gamma](/projects/project-gamma).
+## Game Developer Intern — Audify
+**Jul 2022 – Jul 2023 · Bengaluru, Karnataka, India**
