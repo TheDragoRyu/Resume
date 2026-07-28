@@ -2,36 +2,23 @@
 
 import dynamic from 'next/dynamic';
 import type { SceneNode } from '@/content/content-types';
-import { useMediaQuery } from '@/components/three/helpers/useMediaQuery';
 
-const SceneCanvas = dynamic(() => import('@/components/three/SceneCanvas'), {
-  ssr: false,
-  loading: () => (
-    <div className="flex h-full items-center justify-center text-sm text-gray-500">
-      Loading scene...
-    </div>
-  ),
-});
+const SceneBackground = dynamic(
+  () => import('@/components/three/SceneBackground'),
+  {
+    ssr: false,
+    loading: () => null,
+  },
+);
 
 interface SolarSystemSectionProps {
   sceneGraph: SceneNode;
 }
 
 export default function SolarSystemSection({ sceneGraph }: SolarSystemSectionProps) {
-  const isDesktop = useMediaQuery('(min-width: 768px)');
-  const isMobile = isDesktop === false;
-
-  // SSR/hydration: show placeholder until media query resolves (Gap 13)
-  if (isDesktop === null) {
-    return <section className="relative h-full w-full" />;
-  }
-
   return (
-    <section
-      aria-label="Interactive portfolio solar system"
-      className="relative h-full w-full"
-    >
-      <SceneCanvas sceneGraph={sceneGraph} isMobile={isMobile} />
-    </section>
+    <div aria-hidden="true" className="relative h-full w-full">
+      <SceneBackground sceneGraph={sceneGraph} />
+    </div>
   );
 }

@@ -6,7 +6,7 @@ import LandingExperience from '@/sections/landing/LandingExperience';
 export async function generateMetadata(): Promise<Metadata> {
   const intro = await getIntro();
   return {
-    title: `${intro.frontmatter.title} — ${intro.frontmatter.role || 'Software Engineer'}`,
+    title: `${intro.frontmatter.title} | ${intro.frontmatter.role || 'Software Engineer'}`,
     description: intro.frontmatter.description || 'Software engineer portfolio.',
   };
 }

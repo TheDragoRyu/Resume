@@ -117,7 +117,7 @@ export default function LandingExperience({
         <div
           aria-hidden={heroHidden || undefined}
           inert={heroHidden ? true : undefined}
-          className={`absolute inset-0 z-10 flex items-center justify-center will-change-[filter,opacity,transform] ${
+          className={`absolute inset-0 z-20 flex items-center justify-center will-change-[filter,opacity,transform] ${
             heroHidden ? 'pointer-events-none' : ''
           }`}
           style={{

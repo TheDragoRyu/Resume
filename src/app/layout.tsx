@@ -16,8 +16,8 @@ const silkscreen = Silkscreen({
 
 export const metadata: Metadata = {
   title: {
-    default: 'Portfolio — Software Engineer',
-    template: '%s — Portfolio',
+    default: 'Portfolio | Software Engineer',
+    template: '%s | Portfolio',
   },
   description:
     'Software engineer portfolio showcasing experience, skills, and projects.',
