@@ -23,13 +23,14 @@ export default function SolarSystemSection({ sceneGraph }: SolarSystemSectionPro
 
   // SSR/hydration: show placeholder until media query resolves (Gap 13)
   if (isDesktop === null) {
-    return (
-      <section className="relative h-[50vh] min-h-[300px] w-full md:h-[70vh] md:min-h-[400px]" />
-    );
+    return <section className="relative h-full w-full" />;
   }
 
   return (
-    <section className="relative h-[50vh] min-h-[300px] w-full md:h-[70vh] md:min-h-[400px]">
+    <section
+      aria-label="Interactive portfolio solar system"
+      className="relative h-full w-full"
+    >
       <SceneCanvas sceneGraph={sceneGraph} isMobile={isMobile} />
     </section>
   );
