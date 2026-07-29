@@ -9,7 +9,7 @@ interface HeroSectionProps {
 
 export default function HeroSection({ name, role, description }: HeroSectionProps) {
   return (
-    <section className="relative flex flex-col items-center justify-center px-4 py-24 text-center">
+    <section className="pointer-events-none relative flex flex-col items-center justify-center px-4 py-24 text-center">
       <h1 className="text-4xl font-bold tracking-tight text-accent text-glow-cyan glitch-text sm:text-5xl">
         {name}
       </h1>
@@ -20,7 +20,7 @@ export default function HeroSection({ name, role, description }: HeroSectionProp
         <TrackClick event="hero_cta_clicked" properties={{ destination: 'resume' }}>
           <Link
             href="/resume"
-            className="rounded-lg bg-neon-pink px-6 py-3 min-h-[44px] font-bold text-black transition-colors hover:bg-neon-pink/80"
+            className="pointer-events-auto rounded-lg bg-neon-pink px-6 py-3 min-h-[44px] font-bold text-black transition-colors hover:bg-neon-pink/80"
           >
             Resume
           </Link>
@@ -28,7 +28,7 @@ export default function HeroSection({ name, role, description }: HeroSectionProp
         <TrackClick event="hero_cta_clicked" properties={{ destination: 'projects' }}>
           <Link
             href="/projects"
-            className="rounded-lg border border-accent/30 px-6 py-3 min-h-[44px] font-medium text-accent transition-colors hover:border-accent/60 hover:bg-accent/5"
+            className="pointer-events-auto rounded-lg border border-accent/30 px-6 py-3 min-h-[44px] font-medium text-accent transition-colors hover:border-accent/60 hover:bg-accent/5"
           >
             Projects
           </Link>
@@ -36,7 +36,7 @@ export default function HeroSection({ name, role, description }: HeroSectionProp
         <TrackClick event="hero_cta_clicked" properties={{ destination: 'contact' }}>
           <Link
             href="/contact"
-            className="rounded-lg border border-accent/30 px-6 py-3 min-h-[44px] font-medium text-accent transition-colors hover:border-accent/60 hover:bg-accent/5"
+            className="pointer-events-auto rounded-lg border border-accent/30 px-6 py-3 min-h-[44px] font-medium text-accent transition-colors hover:border-accent/60 hover:bg-accent/5"
           >
             Contact
           </Link>

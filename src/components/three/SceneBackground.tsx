@@ -1,7 +1,14 @@
 'use client';
 
-import { useLayoutEffect, useMemo, useRef } from 'react';
+import {
+  useCallback,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { useRouter } from 'next/navigation';
 import {
   MathUtils,
   PerspectiveCamera,
@@ -24,6 +31,7 @@ interface DecorativePlanetProps {
   node: SceneNode;
   index: number;
   reducedMotion: boolean;
+  onSelect: (node: SceneNode) => void;
 }
 
 const CAMERA_DIRECTION = new Vector3(0, 1, 0.35).normalize();
@@ -58,9 +66,12 @@ function DecorativePlanet({
   node,
   index,
   reducedMotion,
+  onSelect,
 }: DecorativePlanetProps) {
   const groupRef = useRef<Group>(null);
   const angleRef = useRef((index * Math.PI * 2) / 3);
+  const [hovered, setHovered] = useState(false);
+  const hitRadius = Math.max(node.orbit.size * 1.5, 0.8);
 
   useFrame((_, delta) => {
     if (!groupRef.current) return;
@@ -79,13 +90,33 @@ function DecorativePlanet({
   return (
     <>
       <OrbitLine radius={node.orbit.orbitRadius} color={node.orbit.color} />
-      <group ref={groupRef}>
+      <group
+        ref={groupRef}
+        onClick={(event) => {
+          event.stopPropagation();
+          document.body.style.cursor = 'auto';
+          onSelect(node);
+        }}
+        onPointerOver={(event) => {
+          event.stopPropagation();
+          setHovered(true);
+          document.body.style.cursor = 'pointer';
+        }}
+        onPointerOut={() => {
+          setHovered(false);
+          document.body.style.cursor = 'auto';
+        }}
+      >
+        <mesh>
+          <sphereGeometry args={[hitRadius, 16, 16]} />
+          <meshBasicMaterial visible={false} />
+        </mesh>
         <mesh>
           <sphereGeometry args={[node.orbit.size, 24, 24]} />
           <meshStandardMaterial
             color={node.orbit.color}
             emissive={node.orbit.color}
-            emissiveIntensity={0.3}
+            emissiveIntensity={hovered ? 0.65 : 0.3}
           />
         </mesh>
         <mesh>
@@ -94,7 +125,7 @@ function DecorativePlanet({
             color={node.orbit.color}
             wireframe
             transparent
-            opacity={0.35}
+            opacity={hovered ? 0.8 : 0.35}
           />
         </mesh>
       </group>
@@ -133,6 +164,7 @@ function DecorativeSun({
 }
 
 export default function SceneBackground({ sceneGraph }: SceneBackgroundProps) {
+  const router = useRouter();
   const reducedMotion = useReducedMotion();
   const { performanceMode } = usePerformanceMode();
   const webGLSupported = useWebGLSupport();
@@ -146,14 +178,17 @@ export default function SceneBackground({ sceneGraph }: SceneBackgroundProps) {
       ),
     [sceneGraph],
   );
+  const handleSelect = useCallback(
+    (node: SceneNode) => {
+      router.push(node.route);
+    },
+    [router],
+  );
 
   if (!webGLSupported) return null;
 
   return (
-    <div
-      aria-hidden="true"
-      className="pointer-events-none absolute inset-0 h-full w-full"
-    >
+    <div aria-hidden="true" className="absolute inset-0 h-full w-full">
       <Canvas
         camera={{ position: [0, 15, 25], fov: 50 }}
         className="h-full w-full"
@@ -176,6 +211,7 @@ export default function SceneBackground({ sceneGraph }: SceneBackgroundProps) {
             node={planet}
             index={index}
             reducedMotion={reducedMotion || performanceMode}
+            onSelect={handleSelect}
           />
         ))}
       </Canvas>
