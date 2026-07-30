@@ -7,6 +7,7 @@ import {
   validateContent,
   type ValidationError,
 } from '../../src/content/content-validator';
+import { resolveProjectFilePathFromFilename } from '../project-paths';
 
 const DATA_DIR = path.resolve(process.cwd(), 'src', 'data');
 const PROJECTS_DIR = path.join(DATA_DIR, 'projects');
@@ -14,7 +15,6 @@ const MEDIA_DIR = path.resolve(process.cwd(), 'public', 'images');
 const TRASH_DIR = path.resolve(process.cwd(), '.project-admin-trash');
 const MAX_BODY_BYTES = 512 * 1024;
 const MAX_FRONTMATTER_BYTES = 128 * 1024;
-const KEBAB_FILE = /^[a-z0-9]+(?:-[a-z0-9]+)*\.md$/;
 
 export interface ContentDocument {
   path: string;
@@ -162,11 +162,9 @@ export async function createProjectDocument(
   filename: string,
   input: Omit<SaveContentInput, 'path'>
 ): Promise<string> {
-  if (!KEBAB_FILE.test(filename)) {
-    throw new Error('Project filename must use kebab-case and end in .md.');
-  }
-  const relativePath = `src/data/projects/${filename}`;
-  const destination = resolveContentPath(relativePath);
+  // Shared slug/containment rules; see scripts/project-paths.ts.
+  const destination = resolveProjectFilePathFromFilename(filename);
+  const relativePath = relativeContentPath(destination);
   if (fs.existsSync(destination)) {
     throw new Error('A project with this filename already exists.');
   }

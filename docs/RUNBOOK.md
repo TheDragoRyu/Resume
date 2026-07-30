@@ -94,7 +94,10 @@ Fixed Profile, Contact, Projects-page, and Resume-section records can be edited 
 #### Security and recovery
 
 - The backend listens only on loopback, as required when trusting Tailscale Serve identity headers.
+- Identity comes solely from the `Tailscale-User-Login` header. That header is trusted because Tailscale Serve is the only reachable path to the process: the server binds `127.0.0.1` and the proxy strips and re-injects the header. Tailscale's local API cannot improve on this — the backend's peer is the loopback proxy, not the tailnet caller, so no non-spoofable peer identity is available to query. This application is deliberately single-user with no authentication layer; another local OS principal is inside the trust boundary. Re-verify the proxy's header replacement after a Tailscale upgrade, and never bind the backend to a non-loopback address.
 - Mutations require an exact allowed Tailscale identity, same-origin HTTPS, JSON content type, and a per-process CSRF token.
+- Project slugs are validated once in `scripts/project-paths.ts` and every `src/data/projects` destination is resolved there. Saves, featured updates, project creation, and generation all reject non-kebab-case slugs, path separators, dot segments, percent-encoded separators, NUL bytes, and symbolic links.
+- A project selection save resolves every target file path before `.featured-repos.local.json` is rewritten, and rolls back already-written Markdown if a later write fails, so a failure cannot leave configuration and content disagreeing.
 - Responses use `Cache-Control: no-store`, a restrictive Content Security Policy, clickjacking protection, and no-referrer behavior.
 - Repository inventory is held only in server/browser memory. Only selected public repository identifiers enter the mode-`0600` local selection file.
 - Private repositories are visible to the authorized user for inventory awareness but cannot be published, cached, generated, or featured.
@@ -132,6 +135,19 @@ The **GitHub projects** area of the private authoring server replaces the former
 - Private repository names can be reviewed in the authenticated workspace, but private repositories are disabled for publication. The save endpoint independently re-fetches visibility and rejects private selections.
 - Selected public repositories live in `.featured-repos.local.json`; fetched public metadata lives in `.project-cache.json`. Both are gitignored and mode `0600`.
 - A selected public repository and generated case study become visible after their Markdown is committed and deployed.
+
+### Generation sandbox
+
+Repository descriptions, topics, and README text are untrusted prompt input, so `npm run sync:generate` runs the Claude CLI with the least authority that still produces text:
+
+- The child environment is built from the explicit allowlist in `scripts/generate-project-content.ts` (`GENERATION_ENV_ALLOWLIST`), never from `process.env`. GitHub, Tailscale, service-origin, and unrelated credentials are excluded by construction.
+- `HOME` and `CLAUDE_CONFIG_DIR` point at a fresh mode-`0700` temporary directory. Only the single Claude credential file is copied in, so local settings, hooks, MCP configuration, plugins, memory files, and session history are unreachable.
+- The working directory is an empty temporary directory, so the worker has no repository read or write access.
+- Every tool category is disabled at the call site (`--tools ""`, `--setting-sources ""`, `--strict-mcp-config`, `--disable-slash-commands`, `--no-session-persistence`). The script then reads the CLI's own session-init report and refuses to use the output unless the worker confirms it has no tools, no MCP servers, and no slash commands.
+- The untrusted prompt is written to stdin and the answer is read from stdout. Nothing else is exchanged.
+- Model output stays untrusted: sections are checked, frontmatter is serialized with a YAML library, scalars are type-checked and bounded, and every link must be an absolute HTTP or HTTPS URL.
+
+If generation reports that it is not logged in, refresh the local Claude login (`claude` then `/login`). The sandbox intentionally cannot see the operator's shell session.
 
 ### Workflow
 

@@ -82,3 +82,16 @@ Every touched page must preserve:
 - `npm run build` succeeds for code or content changes.
 - Accessibility and SEO requirements remain valid for touched UI.
 - `docs/DECISIONS.md` is updated when a change affects architecture or tooling.
+
+## Authoring Server and Generation Invariants
+
+- Every writer of `src/data/projects/*.md` must resolve its destination through `scripts/project-paths.ts`. That module owns slug syntax, containment, symlink rejection, and atomic writes; do not join a slug into a path anywhere else.
+- A project selection save must resolve every target path before persisting `.featured-repos.local.json` (`saveProjectConfiguration` in `scripts/project-selection.ts`), so a later failure cannot leave configuration and content disagreeing.
+- Repository metadata and README text are untrusted prompt input. The generation subprocess must keep its environment allowlist, empty temporary HOME, empty working directory, and disabled tools. See `docs/RUNBOOK.md`, "Generation sandbox", and `docs/DECISIONS.md`, 2026-07-30.
+
+## Maintaining this file
+
+Keep this file for knowledge useful to almost every future agent session in this project.
+Do not repeat what the codebase already shows; point to the authoritative file or command instead.
+Prefer rewriting or pruning existing entries over appending new ones.
+When updating this file, preserve this bar for all agents and keep entries concise.

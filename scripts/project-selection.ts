@@ -1,10 +1,18 @@
-import fs from 'node:fs';
-import path from 'node:path';
 import type {
   FeaturedRepoConfig,
   FeaturedReposFile,
 } from './project-sync-config';
-import { getGitHubHeaders } from './project-sync-config';
+import {
+  getGitHubHeaders,
+  writeFeaturedReposConfig,
+} from './project-sync-config';
+import {
+  assertProjectSlug,
+  assertSafeProjectFile,
+  readProjectFile,
+  resolveProjectFilePath,
+  writeProjectFile,
+} from './project-paths';
 
 const GITHUB_API = 'https://api.github.com';
 const MAX_PAGES = 100;
@@ -126,14 +134,32 @@ function toKebabCase(value: string): string {
     .replace(/^-+|-+$/g, '');
 }
 
-function projectSlug(repo: FeaturedRepoConfig): string {
-  return repo.overrides?.slug ?? toKebabCase(repo.repo.split('/').at(-1) ?? '');
+export function projectSlug(repo: FeaturedRepoConfig): string {
+  const label = `Project slug for "${repo.repo}"`;
+  if (repo.overrides?.slug !== undefined) {
+    return assertProjectSlug(repo.overrides.slug, label);
+  }
+  return assertProjectSlug(
+    toKebabCase(repo.repo.split('/').at(-1) ?? ''),
+    label
+  );
 }
 
-export function applyFeaturedFlags(
+export interface FeaturedFlagUpdate {
+  filePath: string;
+  previousContents: string;
+  nextContents: string;
+}
+
+/**
+ * Resolves and validates every target path, and computes every new file body,
+ * without writing anything. Callers must plan before they persist configuration
+ * so an invalid slug or an unsafe destination cannot leave partial state.
+ */
+export function planFeaturedFlagUpdates(
   previous: FeaturedReposFile,
   next: FeaturedReposFile
-): number {
+): FeaturedFlagUpdate[] {
   const previousByName = new Map(
     previous.repos.map((repo) => [repo.repo.toLowerCase(), repo])
   );
@@ -144,7 +170,7 @@ export function applyFeaturedFlags(
     ...previousByName.keys(),
     ...nextByName.keys(),
   ]);
-  let updatedFiles = 0;
+  const updates: FeaturedFlagUpdate[] = [];
 
   for (const repositoryName of repositoryNames) {
     const previousRepo = previousByName.get(repositoryName);
@@ -152,28 +178,84 @@ export function applyFeaturedFlags(
     const repo = nextRepo ?? previousRepo;
     if (!repo) continue;
 
-    const projectPath = path.join(
-      process.cwd(),
-      'src',
-      'data',
-      'projects',
-      `${projectSlug(repo)}.md`
+    const projectPath = resolveProjectFilePath(
+      projectSlug(repo),
+      `Project slug for "${repo.repo}"`
     );
-    if (!fs.existsSync(projectPath)) continue;
-    if (fs.lstatSync(projectPath).isSymbolicLink()) {
-      throw new Error(`Refusing to edit symbolic link: ${projectPath}`);
-    }
+    if (assertSafeProjectFile(projectPath) === 'missing') continue;
 
-    const current = fs.readFileSync(projectPath, 'utf8');
+    const current = readProjectFile(projectPath);
     const updated = updateFeaturedFrontmatter(
       current,
       nextRepo?.featured === true
     );
     if (updated !== current) {
-      fs.writeFileSync(projectPath, updated);
-      updatedFiles += 1;
+      updates.push({
+        filePath: projectPath,
+        previousContents: current,
+        nextContents: updated,
+      });
     }
   }
 
-  return updatedFiles;
+  return updates;
+}
+
+/** Applies a plan, restoring every already-written file if one write fails. */
+export function commitFeaturedFlagUpdates(
+  updates: FeaturedFlagUpdate[]
+): number {
+  const applied: FeaturedFlagUpdate[] = [];
+
+  try {
+    for (const update of updates) {
+      writeProjectFile(update.filePath, update.nextContents);
+      applied.push(update);
+    }
+  } catch (error) {
+    const rollbackFailures: string[] = [];
+    for (const update of [...applied].reverse()) {
+      try {
+        writeProjectFile(update.filePath, update.previousContents);
+      } catch (rollbackError) {
+        rollbackFailures.push(
+          `${update.filePath}: ${
+            rollbackError instanceof Error
+              ? rollbackError.message
+              : String(rollbackError)
+          }`
+        );
+      }
+    }
+
+    const reason = error instanceof Error ? error.message : String(error);
+    throw new Error(
+      rollbackFailures.length > 0
+        ? `Featured update failed (${reason}) and rollback failed for ${rollbackFailures.join('; ')}`
+        : `Featured update failed and was rolled back: ${reason}`
+    );
+  }
+
+  return applied.length;
+}
+
+export function applyFeaturedFlags(
+  previous: FeaturedReposFile,
+  next: FeaturedReposFile
+): number {
+  return commitFeaturedFlagUpdates(planFeaturedFlagUpdates(previous, next));
+}
+
+/**
+ * Persists a project selection. The complete plan is computed first so a bad
+ * slug, an unsafe destination, or an unreadable project file rejects the whole
+ * save before `.featured-repos.local.json` is rewritten.
+ */
+export function saveProjectConfiguration(
+  previous: FeaturedReposFile,
+  next: FeaturedReposFile
+): number {
+  const updates = planFeaturedFlagUpdates(previous, next);
+  writeFeaturedReposConfig(next);
+  return commitFeaturedFlagUpdates(updates);
 }
