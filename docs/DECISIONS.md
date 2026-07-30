@@ -554,3 +554,36 @@ src/data/projects/*.md      (committed source of truth)
 - The frontmatter editor favors complete schema flexibility over type-specific visual forms.
 - Local authoring changes still require review and a Git commit before deployment.
 - Other processes running as the same OS user remain inside the trust boundary, consistent with Tailscale's guidance for identity-header backends bound to localhost.
+
+## 2026-07-30: Project Slug Containment and Sandboxed Generation
+
+**Decision:** Centralize project slug validation and project Markdown path construction in one module, and run the AI generation worker with an explicit environment allowlist, an empty temporary home, and no tools. This closes the two High findings from the 2026-07-29 security audit without changing the static production architecture or the Claude CLI dependency.
+
+**Changes:**
+
+- Added `scripts/project-paths.ts` as the single source of truth for slug syntax and `src/data/projects` path resolution. It rejects non-strings, empty and over-long names, NUL bytes, path separators, percent-encoded separators, dot segments, absolute paths, and anything that is not kebab-case; it then requires the resolved parent to be exactly the projects directory.
+- Routed every writer through it: the authoring API normalizer, `validateFeaturedReposConfig`, the selection updater, the content store's project creation, and the generator. Symbolic links and non-regular files are rejected for existing and newly targeted files, and writes are atomic temp-plus-rename so a link is replaced rather than followed.
+- Split the featured-flag update into `planFeaturedFlagUpdates` and `commitFeaturedFlagUpdates`. `saveProjectConfiguration` resolves every destination and computes every new file body before `.featured-repos.local.json` is rewritten, and restores already-written Markdown if a later write fails. The configuration itself is rolled back with it — restored from the previous selection, or removed when the failed save was the first one — so configuration and content never disagree.
+- Made `.featured-repos.local.json` and the example config path resolve at call time instead of module load, so the save path can be exercised against a fixture tree.
+- Moved the subprocess boundary into `scripts/generation-worker.ts` so it can be reviewed independently of content derivation: the sandbox, the environment allowlist, the CLI arguments, the trusted system prompt, and the stream protocol all live there.
+- Replaced `{ ...process.env }` for the generation subprocess with `GENERATION_ENV_ALLOWLIST`. The environment is built up from that list, so GitHub, Tailscale, service-origin, and unrelated credentials cannot reach the worker. `HOME` and `CLAUDE_CONFIG_DIR` are set to a fresh mode-`0700` temporary sandbox and the working directory is an empty temporary directory.
+- Disabled all tool access at the call site with `--tools ""`, `--setting-sources ""`, `--strict-mcp-config`, `--disable-slash-commands`, and `--no-session-persistence`, then made the script parse the CLI's session-init report and fail closed unless the worker confirms zero tools, zero MCP servers, and zero slash commands.
+- Registered `SIGINT`, `SIGTERM`, `SIGHUP`, and exit handlers that remove every sandbox actually created, so an interrupted run does not leave the copied Claude credential under the OS temp root. The handlers still exit with `128 + signal`, so the signal is honoured rather than swallowed.
+- Contained per-target generation failures: reading existing frontmatter, building the document, writing it, and validating it now fail one repository instead of aborting the run, matching the existing model/CLI failure path. The scalar type checks themselves are unchanged and still reject the bad value.
+- Serialized generated frontmatter with `gray-matter` instead of string interpolation, type-checked and bounded every scalar, and required project links to be absolute HTTP or HTTPS URLs.
+- Added regression tests at each sink: slug and path unit tests, featured-update and configuration-save containment, generation target planning, worker environment and argument isolation against a stub worker, and tool-attestation rejection.
+
+**Rationale:**
+
+- The audit proved a crafted `overrides.slug` escaped `src/data/projects` and overwrote an unintended Markdown file. Four independent path joins meant fixing one sink would have left the others reachable, so containment had to become a shared invariant rather than four checks.
+- Persisting configuration before touching files allowed a later filesystem failure to leave configuration and content disagreeing. Planning first makes the save all-or-nothing.
+- The audit also proved the generation subprocess inherited the full service environment while Bash and web tools were structurally available. The privilege reduction removes the authority rather than the capability: the worker still uses the operator's existing local Claude login, but it can only read stdin and write stdout.
+- Reading the CLI's own initialization report converts the command-line flags from a request into a verified invariant, so tool access cannot be re-enabled by an ignored local settings file.
+
+**Trade-offs:**
+
+- Replacing the agentic CLI with a plain text-generation API would isolate the worker further, but it would introduce an API-key dependency and displace the existing local Claude authentication. That is a product decision and was deliberately not taken here.
+- The sandbox copies the one Claude credential file it needs to authenticate. The worker therefore holds the model credential for its own call, which is unavoidable without an API key; it holds nothing else from the operator's home.
+- Generation now fails closed if a future CLI version changes its session-init report, which is preferred over silently sending untrusted text to a tool-enabled agent.
+- Existing project slugs must be kebab-case. A non-conforming override in a hand-edited local configuration file now fails validation instead of being written.
+- The backend still derives identity solely from the `Tailscale-User-Login` proxy header; see docs/RUNBOOK.md for why no non-spoofable alternative exists for a loopback-proxied backend and why this single-user application adds no authentication layer.

@@ -14,13 +14,16 @@ import {
   loadFeaturedReposConfig,
   requireGitHubToken,
   validateFeaturedReposConfig,
-  writeFeaturedReposConfig,
 } from './project-sync-config';
 import {
-  applyFeaturedFlags,
   assertPublicRepositorySelection,
   fetchAvailableRepositories,
+  saveProjectConfiguration,
 } from './project-selection';
+import {
+  assertProjectSlug,
+  MAX_PROJECT_SLUG_LENGTH,
+} from './project-paths';
 import {
   createProjectDocument,
   deleteMediaFile,
@@ -86,6 +89,16 @@ export function identityIsAllowed(
   });
 }
 
+/**
+ * Identity comes solely from the `Tailscale-User-Login` header, which is trusted
+ * because Tailscale Serve is the only reachable path to this process: the server
+ * binds to 127.0.0.1 and the proxy strips and re-injects the header. Tailscale's
+ * local API cannot improve on this — the backend sees the loopback proxy as its
+ * peer, not the tailnet caller, so there is no non-spoofable peer identity to
+ * ask for. This application is deliberately single-user with no authentication
+ * layer; a separate local OS principal is inside the trust boundary. See
+ * docs/RUNBOOK.md, "Security and recovery".
+ */
 function requestIdentity(request: IncomingMessage): string | undefined {
   const value = request.headers['tailscale-user-login'];
   return Array.isArray(value) ? value[0] : value;
@@ -195,7 +208,13 @@ function optionalUrl(value: unknown, label: string): string | undefined {
   return candidate;
 }
 
-function normalizeProjectConfig(value: unknown): FeaturedReposFile {
+function optionalSlug(value: unknown, label: string): string | undefined {
+  const candidate = optionalString(value, label, MAX_PROJECT_SLUG_LENGTH);
+  if (candidate === undefined) return undefined;
+  return assertProjectSlug(candidate, label);
+}
+
+export function normalizeProjectConfig(value: unknown): FeaturedReposFile {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     throw new Error('Project configuration must be an object.');
   }
@@ -256,7 +275,7 @@ function normalizeProjectConfig(value: unknown): FeaturedReposFile {
       featured: candidate.featured === true,
       overrides: {
         title: optionalString(rawOverrides.title, 'Title', 240),
-        slug: optionalString(rawOverrides.slug, 'Slug', 160),
+        slug: optionalSlug(rawOverrides.slug, 'Slug'),
         description: optionalString(
           rawOverrides.description,
           'Description',
@@ -414,8 +433,9 @@ async function handleApi(
     const repositories = await fetchAvailableRepositories(token);
     assertPublicRepositorySelection(next, repositories);
     const previous = existingConfig();
-    writeFeaturedReposConfig(next);
-    const updatedProjectFiles = applyFeaturedFlags(previous, next);
+    // Plans every project file path before persisting configuration; see
+    // saveProjectConfiguration in project-selection.ts.
+    const updatedProjectFiles = saveProjectConfiguration(previous, next);
     sendJson(response, 200, { saved: next.repos.length, updatedProjectFiles });
     return true;
   }

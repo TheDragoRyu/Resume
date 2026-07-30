@@ -222,12 +222,16 @@ flowchart LR
     D --> E[".featured-repos.local.json<br/>gitignored, mode 0600"]
     E --> F["sync-github-projects.ts"]
     F --> G[".project-cache.json<br/>gitignored, mode 0600"]
-    G --> H["generate-project-content.ts<br/>Claude CLI"]
+    G --> H["generate-project-content.ts"]
+    H --> W["generation-worker.ts<br/>sandboxed Claude CLI"]
+    W --> H
     H --> I["src/data/projects/*.md"]
     I --> J["Validation, review, and commit"]
 ```
 
 The owner can inspect private repository names inside the authenticated no-store session, but private entries are disabled in the UI and rejected again during save and fetch. Existing Markdown is protected unless generation is explicitly forced, locked entries cannot be overwritten, forced updates retain editor-managed cover media, and failed validation restores the previous file.
+
+Repository metadata and README text are untrusted prompt input, so the Claude CLI runs behind `scripts/generation-worker.ts` with a reduced environment and no tools, and every `src/data/projects` destination is resolved through `scripts/project-paths.ts`. The [runbook](../docs/RUNBOOK.md#generation-sandbox) states the exact boundary.
 
 See the [runbook](../docs/RUNBOOK.md#github-project-ingestion) for access and failure recovery.
 

@@ -1,6 +1,7 @@
+import { execFile } from 'child_process';
 import fs from 'fs';
 import path from 'path';
-import { execFile } from 'child_process';
+import { fileURLToPath } from 'node:url';
 import matter from 'gray-matter';
 import { getAllContent } from '../src/content/content-loader';
 import { validateContent } from '../src/content/content-validator';
@@ -9,6 +10,24 @@ import type {
   FeaturedRepoConfig,
   FeaturedReposDefaults,
 } from './project-sync-config';
+import {
+  assertProjectSlug,
+  assertSafeProjectFile,
+  projectsDirectory,
+  readProjectFile,
+  removeProjectFile,
+  resolveProjectFilePath,
+  writeProjectFile,
+} from './project-paths';
+import {
+  asChildEnvironment,
+  buildGenerationInvocation,
+  createGenerationSandbox,
+  destroyGenerationSandbox,
+  runGenerationInvocation,
+  seedGenerationCredential,
+  type GenerationInvocation,
+} from './generation-worker';
 
 // ---------------------------------------------------------------------------
 // Types (matching sync-github-projects.ts output)
@@ -29,7 +48,7 @@ interface GitHubRepoData {
   pushed_at: string;
 }
 
-interface CachedRepo {
+export interface CachedRepo {
   config: FeaturedRepoConfig;
   github: GitHubRepoData;
   languages: Record<string, number>;
@@ -47,40 +66,12 @@ interface CacheFile {
 // Constants
 // ---------------------------------------------------------------------------
 
-const PROJECTS_DIR = path.join(process.cwd(), 'src', 'data', 'projects');
 const CACHE_PATH = path.join(process.cwd(), '.project-cache.json');
 const MAX_README_CHARS = 3000;
-
-const SYSTEM_PROMPT = `You write short project case studies for a developer's portfolio website. The audience is recruiters and hiring managers — they care about what the project DOES, what a user SEES, and what skills it demonstrates. They do not care about internal code structure, build pipelines, or developer tooling.
-
-Output ONLY raw Markdown. No frontmatter, no code fences, no preamble, no extra commentary.
-
-Produce exactly six sections in this order with these exact H2 headings:
-
-## Description
-## Tags
-## Problem
-## Solution
-## Highlights
-## Tech Stack
-
-Section rules:
-- "## Description": One sentence (max 20 words). What this project IS from a user's perspective. E.g. "An interactive portfolio site with a 3D solar system navigation." This goes on the project card — make it count.
-- "## Tags": One line. 3-6 comma-separated tags in Title Case. Focus on skills a recruiter searches for (e.g. "React", "Three.js", "Responsive Design", "Accessibility") not internal concerns (e.g. "Content Pipeline", "Validation").
-- "## Problem": 1-2 sentences. What gap or need motivated this project? Frame it from the repo owner's personal perspective — this is THEIR project, not a generic tool for "developers". Use first person or impersonal phrasing like "Needed..." not "Developers needed...".
-- "## Solution": 2-3 sentences. What was built and how does it work FROM THE OUTSIDE? Mention visible features, interactions, and user experience. Name technologies only when they explain a visible capability (e.g. "Three.js powers an interactive 3D solar system" not "Three.js scenes loaded client-side").
-- "## Highlights": 3-5 short bullet points. Each must describe something a recruiter can SEE, CLICK, or VERIFY. Good: "Keyboard-navigable 3D scene with screen reader support". Bad: "Strict folder boundaries". Bad: "Content validation at build time".
-- "## Tech Stack": One line. Comma-separated list of technologies.
-
-Style constraints:
-- Total output MUST be under 200 words.
-- Write in third person past tense.
-- Lead with what's visible and impressive. Save internal details for last or omit them.
-- Do not invent features, metrics, or outcomes not in the source material.
-- Do not mention: file paths, directory structures, config files, build scripts, folder boundaries, frontmatter, loaders, or validation pipelines.
-- No marketing fluff ("cutting-edge", "seamless", "robust", "elegant").
-- No meta-commentary about the README or repo.
-- If "Author's notes" are provided, treat them as the highest-priority source. They contain the author's own perspective on what matters about the project — use them to guide tone, emphasis, and what to highlight.`;
+const MAX_TAGS = 30;
+const MAX_TAG_CHARS = 80;
+const MAX_URL_CHARS = 2048;
+const ALLOWED_LINK_PROTOCOLS = ['http:', 'https:'];
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -108,8 +99,13 @@ function getTopLanguages(languages: Record<string, number>, max = 4): string[] {
     .map(([lang]) => lang);
 }
 
-function deriveSlug(repo: CachedRepo): string {
-  return repo.config.overrides?.slug ?? toKebabCase(repo.github.name);
+export function deriveSlug(repo: CachedRepo): string {
+  const label = `Project slug for "${repo.github.full_name}"`;
+  const override = repo.config.overrides?.slug;
+  if (override !== undefined) {
+    return assertProjectSlug(override, label);
+  }
+  return assertProjectSlug(toKebabCase(repo.github.name), label);
 }
 
 function deriveTitle(repo: CachedRepo): string {
@@ -145,70 +141,130 @@ function deriveDescription(repo: CachedRepo): string {
   );
 }
 
-function deriveLinks(repo: CachedRepo): Record<string, string> {
-  const links: Record<string, string> = {
-    github: repo.github.html_url,
-  };
-  if (repo.config.overrides?.links?.demo) {
-    links.demo = repo.config.overrides.links.demo;
-  } else if (repo.github.homepage) {
-    links.demo = repo.github.homepage;
+// ---------------------------------------------------------------------------
+// Untrusted scalar validation
+//
+// Repository metadata and model output are both untrusted. Every value that
+// reaches frontmatter is type-checked and bounded here, and the document itself
+// is serialized with a YAML library rather than string interpolation.
+// ---------------------------------------------------------------------------
+
+function scalarString(value: unknown, label: string, maximum: number): string {
+  if (typeof value !== 'string') {
+    throw new Error(`${label} must be a string.`);
   }
-  if (repo.config.overrides?.links?.writeup) {
-    links.writeup = repo.config.overrides.links.writeup;
+  if (value.includes('\0')) {
+    throw new Error(`${label} must not contain NUL bytes.`);
   }
+  return value.length > maximum ? `${value.slice(0, maximum - 1)}…` : value;
+}
+
+function scalarInteger(value: unknown, label: string): number {
+  if (!Number.isInteger(value)) {
+    throw new Error(`${label} must be an integer.`);
+  }
+  return Number(value);
+}
+
+function normalizeTags(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  const tags: string[] = [];
+  for (const entry of value) {
+    if (typeof entry !== 'string') continue;
+    const tag = entry.trim();
+    if (!tag || tag.includes('\0') || tag.length > MAX_TAG_CHARS) continue;
+    if (!tags.includes(tag)) tags.push(tag);
+    if (tags.length === MAX_TAGS) break;
+  }
+  return tags;
+}
+
+/** Returns the URL only when it is an absolute HTTP(S) URL. */
+export function safeHttpUrl(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const candidate = value.trim();
+  if (!candidate || candidate.length > MAX_URL_CHARS) return undefined;
+
+  let url: URL;
+  try {
+    url = new URL(candidate);
+  } catch {
+    return undefined;
+  }
+  return ALLOWED_LINK_PROTOCOLS.includes(url.protocol) ? candidate : undefined;
+}
+
+export function deriveLinks(repo: CachedRepo): Record<string, string> {
+  const links: Record<string, string> = {};
+
+  const repository = safeHttpUrl(repo.github.html_url);
+  if (repository) links.github = repository;
+
+  const demo = safeHttpUrl(
+    repo.config.overrides?.links?.demo ?? repo.github.homepage
+  );
+  if (demo) links.demo = demo;
+
+  const writeup = safeHttpUrl(repo.config.overrides?.links?.writeup);
+  if (writeup) links.writeup = writeup;
+
   return links;
 }
 
-function buildFrontmatter(
-  repo: CachedRepo,
+export function buildProjectDocument(
+  target: GenerationTarget,
   defaults: FeaturedReposDefaults,
   aiTags: string[],
   aiDescription: string,
+  body: string,
   existingProject?: Partial<ProjectFrontmatter>
 ): string {
-  const slug = deriveSlug(repo);
-  const title = deriveTitle(repo);
-  const description = repo.config.overrides?.description ?? (aiDescription || deriveDescription(repo));
-  const tags = repo.config.overrides?.tags ?? aiTags;
-  const links = deriveLinks(repo);
-  const categoryId = repo.config.categoryId ?? defaults.categoryId;
-  const featured = repo.config.featured ?? defaults.featured;
+  const { repo, slug } = target;
+  const description =
+    repo.config.overrides?.description ??
+    (aiDescription || deriveDescription(repo));
 
-  const lines: string[] = [
-    '---',
-    `id: proj-${slug}`,
-    `slug: ${slug}`,
-    `title: "${title}"`,
-    `type: project`,
-    `order: ${repo.config.order}`,
-    `description: "${description}"`,
-    `categoryId: ${categoryId}`,
-    `featured: ${featured}`,
-  ];
+  const frontmatter: Record<string, unknown> = {
+    id: `proj-${slug}`,
+    slug,
+    title: scalarString(deriveTitle(repo), 'Project title', 240),
+    type: 'project',
+    order: scalarInteger(repo.config.order, 'Project order'),
+    description: scalarString(description, 'Project description', 1_000),
+    categoryId: scalarString(
+      repo.config.categoryId ?? defaults.categoryId,
+      'Project category',
+      120
+    ),
+    featured: (repo.config.featured ?? defaults.featured) === true,
+  };
+
   if (existingProject?.image) {
-    lines.push(`image: ${JSON.stringify(existingProject.image)}`);
+    frontmatter.image = scalarString(
+      existingProject.image,
+      'Project image',
+      512
+    );
     if (existingProject.imageAlt) {
-      lines.push(`imageAlt: ${JSON.stringify(existingProject.imageAlt)}`);
+      frontmatter.imageAlt = scalarString(
+        existingProject.imageAlt,
+        'Project image alt text',
+        512
+      );
     }
   }
 
-  if (tags.length > 0) {
-    lines.push('tags:');
-    for (const tag of tags) {
-      lines.push(`  - ${tag}`);
-    }
-  }
+  const tags = normalizeTags(repo.config.overrides?.tags ?? aiTags);
+  if (tags.length > 0) frontmatter.tags = tags;
 
-  if (Object.keys(links).length > 0) {
-    lines.push('links:');
-    for (const [key, value] of Object.entries(links)) {
-      lines.push(`  ${key}: ${value}`);
-    }
-  }
+  const links = deriveLinks(repo);
+  if (Object.keys(links).length > 0) frontmatter.links = links;
 
-  lines.push('---');
-  return lines.join('\n');
+  const normalizedBody = body.replace(/\s+$/u, '');
+  return matter.stringify(
+    normalizedBody ? `\n${normalizedBody}\n` : '',
+    frontmatter
+  );
 }
 
 function buildUserPrompt(repo: CachedRepo): string {
@@ -235,32 +291,30 @@ ${readme || 'No README available.'}`;
 }
 
 // ---------------------------------------------------------------------------
-// Claude CLI invocation
+// Target planning
+//
+// Every slug is validated and every destination path is resolved before the
+// generator touches the filesystem or starts a subprocess, so an unsafe entry
+// anywhere in the cache rejects the whole run instead of leaving partial state.
 // ---------------------------------------------------------------------------
 
-function invokeClaude(
-  systemPrompt: string,
-  userPrompt: string
-): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const child = execFile(
-      'claude',
-      ['-p', '--model', 'sonnet', '--output-format', 'text'],
-      { maxBuffer: 1024 * 1024, timeout: 120_000, env: { ...process.env, CLAUDECODE: '' } },
-      (err, stdout, stderr) => {
-        if (err) {
-          reject(new Error(`claude CLI failed: ${err.message}\n${stderr}`));
-          return;
-        }
-        resolve(stdout.trim());
-      }
-    );
+export interface GenerationTarget {
+  repo: CachedRepo;
+  slug: string;
+  filePath: string;
+}
 
-    // Write system prompt + user prompt to stdin
-    if (child.stdin) {
-      child.stdin.write(`${systemPrompt}\n\n---\n\n${userPrompt}`);
-      child.stdin.end();
-    }
+export function planGenerationTargets(repos: CachedRepo[]): GenerationTarget[] {
+  return repos.map((repo) => {
+    const slug = deriveSlug(repo);
+    return {
+      repo,
+      slug,
+      filePath: resolveProjectFilePath(
+        slug,
+        `Project slug for "${repo.github.full_name}"`
+      ),
+    };
   });
 }
 
@@ -306,6 +360,120 @@ function parseForceArg(args: string[]): { forceAll: boolean; forceSlugs: Set<str
 // Main
 // ---------------------------------------------------------------------------
 
+/**
+ * Puts a target back the way it was found. Restoring is itself a filesystem
+ * operation on one target, so a failure here is reported and contained rather
+ * than allowed to abort the remaining repositories.
+ */
+function restoreProjectTarget(
+  filePath: string,
+  previousContents: string | undefined
+): void {
+  try {
+    if (previousContents !== undefined) {
+      writeProjectFile(filePath, previousContents);
+      console.error(`  Restored previous content: ${filePath}`);
+    } else if (removeProjectFile(filePath)) {
+      console.error(`  Removed invalid file: ${filePath}`);
+    }
+  } catch (err) {
+    console.error(`  Could not restore ${filePath}: ${err}`);
+  }
+}
+
+async function generateTarget(
+  target: GenerationTarget,
+  defaults: FeaturedReposDefaults,
+  invocation: GenerationInvocation,
+  shouldForce: boolean
+): Promise<'generated' | 'skipped' | 'failed'> {
+  const { repo, slug, filePath } = target;
+
+  // Rejects symbolic links and non-regular files for existing and new targets.
+  const state = assertSafeProjectFile(filePath);
+
+  // Lock: never overwrite locked repos, even with --force
+  if (repo.config.lock) {
+    console.log(`Skipping ${slug} — locked in the local project selection`);
+    return 'skipped';
+  }
+
+  // Idempotency: skip if file exists and not forced
+  if (state === 'file' && !shouldForce) {
+    console.log(`Skipping ${slug} — file already exists (use --force to overwrite)`);
+    return 'skipped';
+  }
+
+  // Existing frontmatter is untrusted input too: a hand-edited file can fail to
+  // parse or carry a non-string scalar. That must fail this target only.
+  let existingContent: string | undefined;
+  let existingProject: Partial<ProjectFrontmatter> | undefined;
+  try {
+    existingContent = state === 'file' ? readProjectFile(filePath) : undefined;
+    existingProject = existingContent
+      ? (matter(existingContent).data as Partial<ProjectFrontmatter>)
+      : undefined;
+  } catch (err) {
+    console.error(
+      `  Could not read the existing document for ${slug}: ${err} — skipping`
+    );
+    return 'failed';
+  }
+
+  console.log(`Generating content for ${slug}...`);
+
+  let body: string;
+  try {
+    body = await runGenerationInvocation(invocation, buildUserPrompt(repo));
+  } catch (err) {
+    console.error(`  Claude generation failed for ${slug}: ${err} — skipping`);
+    return 'failed';
+  }
+
+  // Validate output has expected sections
+  const requiredSections = ['## Description', '## Tags', '## Problem', '## Solution', '## Highlights', '## Tech Stack'];
+  const missingSections = requiredSections.filter((s) => !body.includes(s));
+  if (missingSections.length > 0) {
+    console.error(
+      `  Generated content for ${slug} is missing sections: ${missingSections.join(', ')} — skipping`
+    );
+    return 'failed';
+  }
+
+  // Building, writing and validating the document all reject untrusted values by
+  // throwing. Like the generation call above, that must fail this target only —
+  // the remaining repositories still get their turn.
+  try {
+    const document = buildProjectDocument(
+      target,
+      defaults,
+      parseTagsFromBody(body),
+      parseDescriptionFromBody(body),
+      stripMetaSections(body),
+      existingProject
+    );
+
+    writeProjectFile(filePath, document);
+
+    const validation = await validateGenerated(filePath);
+    if (validation.valid) {
+      console.log(`  Written: ${filePath}`);
+      return 'generated';
+    }
+
+    console.error(
+      `  Validation failed for ${slug}:\n${validation.errors.map((e) => `    ${e}`).join('\n')}`
+    );
+  } catch (err) {
+    console.error(
+      `  Could not write generated content for ${slug}: ${err} — skipping`
+    );
+  }
+
+  restoreProjectTarget(filePath, existingContent);
+  return 'failed';
+}
+
 async function main() {
   // Check cache exists
   if (!fs.existsSync(CACHE_PATH)) {
@@ -315,13 +483,22 @@ async function main() {
     process.exit(1);
   }
 
-  // Check claude CLI is available
+  // Check claude CLI is available. The probe gets no inherited environment
+  // either, so a missing PATH entry fails here rather than mid-generation.
   try {
     await new Promise<void>((resolve, reject) => {
-      execFile('claude', ['--version'], (err) => {
-        if (err) reject(err);
-        else resolve();
-      });
+      execFile(
+        'claude',
+        ['--version'],
+        {
+          env: asChildEnvironment({ PATH: process.env.PATH ?? '' }),
+          shell: false,
+        },
+        (err) => {
+          if (err) reject(err);
+          else resolve();
+        }
+      );
     });
   } catch {
     console.error(
@@ -346,103 +523,39 @@ async function main() {
     return;
   }
 
+  // Validate every slug and resolve every destination before any file work.
+  const targets = planGenerationTargets(cache.repos);
   const { forceAll, forceSlugs } = parseForceArg(process.argv.slice(2));
 
-  // Ensure projects directory exists
-  if (!fs.existsSync(PROJECTS_DIR)) {
-    fs.mkdirSync(PROJECTS_DIR, { recursive: true });
+  const projectsDir = projectsDirectory();
+  if (!fs.existsSync(projectsDir)) {
+    fs.mkdirSync(projectsDir, { recursive: true });
   }
 
   let generated = 0;
   let skipped = 0;
 
-  for (const repo of cache.repos) {
-    const slug = deriveSlug(repo);
-    const filePath = path.join(PROJECTS_DIR, `${slug}.md`);
-    const shouldForce = forceAll || forceSlugs.has(slug);
-
-    // Lock: never overwrite locked repos, even with --force
-    if (repo.config.lock) {
-      console.log(`Skipping ${slug} — locked in the local project selection`);
-      skipped++;
-      continue;
-    }
-
-    // Idempotency: skip if file exists and not forced
-    if (fs.existsSync(filePath) && !shouldForce) {
-      console.log(`Skipping ${slug} — file already exists (use --force to overwrite)`);
-      skipped++;
-      continue;
-    }
-
-    const existingContent = fs.existsSync(filePath)
-      ? fs.readFileSync(filePath, 'utf-8')
-      : undefined;
-    const existingProject = existingContent
-      ? (matter(existingContent).data as Partial<ProjectFrontmatter>)
-      : undefined;
-
-    console.log(`Generating content for ${slug}...`);
-
-    const userPrompt = buildUserPrompt(repo);
-
-    // Invoke Claude for body content
-    let body: string;
-    try {
-      body = await invokeClaude(SYSTEM_PROMPT, userPrompt);
-    } catch (err) {
-      console.error(`  Claude generation failed for ${slug}: ${err} — skipping`);
-      continue;
-    }
-
-    // Validate output has expected sections
-    const requiredSections = ['## Description', '## Tags', '## Problem', '## Solution', '## Highlights', '## Tech Stack'];
-    const missingSections = requiredSections.filter((s) => !body.includes(s));
-    if (missingSections.length > 0) {
-      console.error(
-        `  Generated content for ${slug} is missing sections: ${missingSections.join(', ')} — skipping`
+  const sandbox = createGenerationSandbox();
+  try {
+    if (!seedGenerationCredential(sandbox)) {
+      console.log(
+        'No local Claude credential found; the generation worker will rely on ANTHROPIC_API_KEY.'
       );
-      continue;
     }
+    const invocation = buildGenerationInvocation(sandbox);
 
-    // Extract AI-generated metadata and strip meta sections from body
-    const aiTags = parseTagsFromBody(body);
-    const aiDescription = parseDescriptionFromBody(body);
-    const cleanBody = stripMetaSections(body);
-
-    // Build frontmatter with AI tags and description
-    const frontmatter = buildFrontmatter(
-      repo,
-      cache.defaults,
-      aiTags,
-      aiDescription,
-      existingProject
-    );
-
-    // Assemble full file
-    const fullContent = `${frontmatter}\n\n${cleanBody}\n`;
-
-    // Write file
-    fs.writeFileSync(filePath, fullContent);
-
-    // Validate against existing content
-    const validation = await validateGenerated(filePath);
-    if (!validation.valid) {
-      console.error(
-        `  Validation failed for ${slug}:\n${validation.errors.map((e) => `    ${e}`).join('\n')}`
+    for (const target of targets) {
+      const outcome = await generateTarget(
+        target,
+        cache.defaults,
+        invocation,
+        forceAll || forceSlugs.has(target.slug)
       );
-      if (existingContent !== undefined) {
-        fs.writeFileSync(filePath, existingContent);
-        console.error(`  Restored previous content: ${filePath}`);
-      } else {
-        fs.unlinkSync(filePath);
-        console.error(`  Removed invalid file: ${filePath}`);
-      }
-      continue;
+      if (outcome === 'generated') generated += 1;
+      if (outcome === 'skipped') skipped += 1;
     }
-
-    console.log(`  Written: ${filePath}`);
-    generated++;
+  } finally {
+    destroyGenerationSandbox(sandbox);
   }
 
   console.log(
@@ -450,7 +563,13 @@ async function main() {
   );
 }
 
-main().catch((err) => {
-  console.error('Generate script failed:', err);
-  process.exit(1);
-});
+const isMainModule =
+  process.argv[1] !== undefined &&
+  path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+
+if (isMainModule) {
+  main().catch((err) => {
+    console.error('Generate script failed:', err);
+    process.exit(1);
+  });
+}

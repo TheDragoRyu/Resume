@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import { assertProjectSlug } from './project-paths';
 
 export interface RepoOverrides {
   title?: string;
@@ -31,16 +32,14 @@ export interface FeaturedReposFile {
   repos: FeaturedRepoConfig[];
 }
 
-export const LOCAL_CONFIG_PATH = path.join(
-  process.cwd(),
-  '.featured-repos.local.json'
-);
+/** Resolved at call time so tests and tools can operate on a fixture tree. */
+export function localConfigPath(): string {
+  return path.resolve(process.cwd(), '.featured-repos.local.json');
+}
 
-export const EXAMPLE_CONFIG_PATH = path.join(
-  process.cwd(),
-  'scripts',
-  'featured-repos.example.json'
-);
+export function exampleConfigPath(): string {
+  return path.resolve(process.cwd(), 'scripts', 'featured-repos.example.json');
+}
 
 export function validateFeaturedReposConfig(
   config: FeaturedReposFile
@@ -73,6 +72,16 @@ export function validateFeaturedReposConfig(
     }
     names.add(normalizedName);
 
+    // An override slug becomes a filesystem path in the selection updater and
+    // the generator, so it is validated here for every caller — including a
+    // hand-edited local configuration file.
+    if (repo.overrides?.slug !== undefined) {
+      assertProjectSlug(
+        repo.overrides.slug,
+        `.featured-repos.local.json: repo "${repo.repo}" override slug`
+      );
+    }
+
     if (!Number.isInteger(repo.order) || repo.order < 1) {
       throw new Error(
         `.featured-repos.local.json: repo "${repo.repo}" needs a positive integer order`
@@ -90,14 +99,15 @@ export function validateFeaturedReposConfig(
 }
 
 export function loadFeaturedReposConfig(): FeaturedReposFile {
-  if (!fs.existsSync(LOCAL_CONFIG_PATH)) {
+  const configPath = localConfigPath();
+  if (!fs.existsSync(configPath)) {
     throw new Error(
       'No local project selection found. Save GitHub project configuration in the private authoring server first.'
     );
   }
 
   const config = JSON.parse(
-    fs.readFileSync(LOCAL_CONFIG_PATH, 'utf8')
+    fs.readFileSync(configPath, 'utf8')
   ) as FeaturedReposFile;
 
   return validateFeaturedReposConfig(config);
@@ -105,7 +115,7 @@ export function loadFeaturedReposConfig(): FeaturedReposFile {
 
 export function loadExampleDefaults(): FeaturedReposDefaults {
   const example = JSON.parse(
-    fs.readFileSync(EXAMPLE_CONFIG_PATH, 'utf8')
+    fs.readFileSync(exampleConfigPath(), 'utf8')
   ) as FeaturedReposFile;
 
   return validateFeaturedReposConfig(example).defaults;
@@ -135,7 +145,7 @@ export function writePrivateJsonFile(
 
 export function writeFeaturedReposConfig(config: FeaturedReposFile): void {
   validateFeaturedReposConfig(config);
-  writePrivateJsonFile(LOCAL_CONFIG_PATH, config);
+  writePrivateJsonFile(localConfigPath(), config);
 }
 
 export function resolveGitHubToken(): string | undefined {
