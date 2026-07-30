@@ -5,7 +5,7 @@ This wiki is the product and technical guide for the Resume Website. It describe
 ## Core documents
 
 - [Problem statement](problem-statement.md) — the audience, problem, goals, constraints, and measures of success.
-- [Architecture](architecture.md) — the system boundaries, content and rendering pipelines, routes, 3D model, analytics, and deployment.
+- [Architecture](architecture.md) — the system boundaries, content and rendering pipelines, routes, 3D model, quality gates, and deployment.
 - [User-facing features](features.md) — every currently implemented capability described from a visitor's perspective.
 - [Roadmap and known work](roadmap.md) — unresolved defects, production-readiness work, documented optional enhancements, and recurring maintenance.
 

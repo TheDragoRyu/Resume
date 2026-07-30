@@ -4,6 +4,10 @@ import { getProjects, getContentBySlug } from '@/content/content-loader';
 import type { ProjectFrontmatter } from '@/content/content-types';
 import Breadcrumb from '@/components/ui/Breadcrumb';
 import CaseStudyBody from '@/sections/projects/CaseStudyBody';
+import { buildSiteUrl } from '@/utils/site-url';
+
+const SITE_ORIGIN = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || '';
 
 interface ProjectPageProps {
   params: Promise<{ slug: string }>;
@@ -33,11 +37,17 @@ export async function generateMetadata({
       images: project.frontmatter.image
         ? [
             {
-              url: project.frontmatter.image,
+              url: buildSiteUrl(SITE_ORIGIN, BASE_PATH, project.frontmatter.image),
               alt: project.frontmatter.imageAlt || project.frontmatter.title,
             },
           ]
-        : [{ url: '/og-default.png', width: 1200, height: 630 }],
+        : [
+            {
+              url: buildSiteUrl(SITE_ORIGIN, BASE_PATH, '/og-default.png'),
+              width: 1200,
+              height: 630,
+            },
+          ],
     },
   };
 }

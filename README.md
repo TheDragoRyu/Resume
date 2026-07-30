@@ -10,7 +10,6 @@ Planets represent resume categories (Experience, Skills, Education), moons repre
 - **Styling:** Tailwind CSS 4, Silkscreen pixel font, neon color palette
 - **3D:** Three.js + React Three Fiber + @react-three/drei (client-side only)
 - **Content:** Markdown with YAML frontmatter, parsed at build time
-- **Analytics:** PostHog (12 custom engagement events)
 - **Deploy:** GitHub Actions → GitHub Pages
 
 ## Getting Started
@@ -30,8 +29,12 @@ Open [http://localhost:3000](http://localhost:3000).
 | Script | Description |
 |---|---|
 | `npm run dev` | Start the development server |
-| `npm run validate` | Validate all Markdown content schemas |
+| `npm run validate` | Validate Markdown schemas, internal links, and local media |
+| `npm run lint` | Run ESLint with zero warnings |
+| `npm run test` | Run the Vitest suite once |
+| `npm run test:watch` | Run Vitest in watch mode |
 | `npm run build` | Build the static site (runs validation first) |
+| `npm run check` | Run lint, tests, validation, and the static build |
 | `npm run start` | Serve the built `/out` directory locally |
 
 ## Project Structure
@@ -62,11 +65,11 @@ The wiki is the canonical overview of current behavior and unfinished work. The 
 
 ## Content System
 
-All resume and project content lives in `src/data/` as Markdown files with required frontmatter (`id`, `slug`, `title`, `type`, `order`). The build pipeline validates every file against the schema and fails on violations.
+All resume and project content lives in `src/data/` as Markdown files with required frontmatter (`id`, `slug`, `title`, `type`, `order`). The build pipeline validates every file against the schema, rejects broken internal links and local media, and fails on violations.
 
-Routine updates are made through the [Pages CMS editor](https://app.pagescms.org), which provides authenticated forms, rich-text editing, and media uploads while committing the same Markdown files to GitHub. No CMS code, credentials, or content database is shipped with the public website.
+Routine updates are made through a loopback-only authoring server exposed to the owner's devices with Tailscale Serve. It edits the same Markdown, validates changes before accepting them, manages media and GitHub-backed projects, and never enters the public static export.
 
-Follow the [content editing runbook](docs/RUNBOOK.md#visual-editor-recommended) for one-time access setup and everyday use.
+Follow the [private authoring runbook](docs/RUNBOOK.md#private-authoring-server-recommended) for access, security, and everyday use.
 
 ```
 src/data/
@@ -76,7 +79,7 @@ src/data/
 └── pages/           # contact.md and other page content
 ```
 
-Use the visual editor to update the profile, resume, projects, contact details, and images. Direct Markdown editing remains available as a maintainer fallback.
+Use the private authoring workspace to update the profile, resume, projects, contact details, and images. Direct Markdown editing remains available as a maintainer fallback.
 
 ## Routes
 
@@ -102,7 +105,7 @@ See the [architecture wiki](wiki/architecture.md) for the current system and [do
 
 ## Deployment
 
-Deployed automatically via GitHub Actions on push to `main`. The workflow runs content validation, builds the static export, and deploys to GitHub Pages.
+Deployed automatically via GitHub Actions on push to `main`. The workflow runs lint, tests, content validation, and the static export before deploying to GitHub Pages. Pull requests run the same quality gate without deploying.
 
 ### Environment Variables
 
@@ -110,7 +113,5 @@ Set these in your GitHub repository settings under **Settings > Secrets and vari
 
 | Variable | Purpose |
 |---|---|
-| `NEXT_PUBLIC_SITE_URL` | Canonical URL for OpenGraph meta tags |
+| `NEXT_PUBLIC_SITE_URL` | Canonical site origin, for example `https://example.com` |
 | `NEXT_PUBLIC_BASE_PATH` | Base path for subdirectory deployments (optional) |
-| `NEXT_PUBLIC_POSTHOG_KEY` | PostHog project API key |
-| `NEXT_PUBLIC_POSTHOG_HOST` | PostHog instance URL |

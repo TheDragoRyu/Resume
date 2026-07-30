@@ -38,7 +38,6 @@ The visual experience must never become the only way to find information. Every 
 - Add projects without duplicating data across pages, menus, and the 3D scene.
 - Validate and publish the entire site through a repeatable static build.
 - Optionally generate draft project case studies from configured GitHub repositories.
-- Measure engagement with key navigation and content surfaces when analytics is configured.
 
 ## Product goals
 
@@ -48,7 +47,7 @@ The visual experience must never become the only way to find information. Every 
 4. Keep navigation labels, routes, resume sections, projects, and scene nodes synchronized from one content source.
 5. Support desktop, mobile, keyboard, screen-reader, reduced-motion, low-performance, and no-WebGL use cases.
 6. Produce SEO-friendly, shareable static pages for every public route.
-7. Keep operation simple enough for a personal site: Markdown, Git-backed Pages CMS authoring, build-time validation, and GitHub Pages.
+7. Keep operation simple enough for a personal site: Markdown, private Tailscale authoring, build-time validation, and GitHub Pages.
 
 ## Constraints
 
@@ -63,7 +62,7 @@ The visual experience must never become the only way to find information. Every 
 
 ## Non-goals
 
-- A first-party backend, embedded CMS runtime, database, authentication system, or admin dashboard.
+- A backend, CMS runtime, database, authentication system, or admin dashboard in the deployed portfolio. The loopback-only authoring service is an operations tool, not a production dependency.
 - Server-side contact processing.
 - Making the 3D canvas the only or primary accessible navigation surface.
 - Replacing readable case studies with purely visual project presentations.
@@ -81,6 +80,6 @@ The product succeeds when:
 - invalid content stops the build before deployment;
 - project and resume content is accurate, complete, and free of broken assets or links;
 - search and social previews receive meaningful metadata; and
-- optional analytics can answer whether visitors find and engage with the resume, projects, and 3D navigation.
+- the production site operates without analytics or tracking dependencies.
 
 The interaction principles behind these criteria are defined in the [design pillars](design-pillars.md) and [UX standards](ux-standards.md).

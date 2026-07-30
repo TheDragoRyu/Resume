@@ -1,5 +1,4 @@
 import Image from 'next/image';
-import TrackClick from '@/components/ui/TrackClick';
 
 interface CaseStudyBodyProps {
   title: string;
@@ -58,7 +57,6 @@ export default function CaseStudyBody({
       {links && (Object.values(links).some(Boolean)) && (
         <div className="mt-4 flex gap-4">
           {links.github && (
-            <TrackClick event="project_link_clicked" properties={{ project: title, link_type: 'github' }}>
               <a
                 href={links.github}
                 target="_blank"
@@ -67,10 +65,8 @@ export default function CaseStudyBody({
               >
                 GitHub
               </a>
-            </TrackClick>
           )}
           {links.demo && (
-            <TrackClick event="project_link_clicked" properties={{ project: title, link_type: 'demo' }}>
               <a
                 href={links.demo}
                 target="_blank"
@@ -79,10 +75,8 @@ export default function CaseStudyBody({
               >
                 Live Demo
               </a>
-            </TrackClick>
           )}
           {links.writeup && (
-            <TrackClick event="project_link_clicked" properties={{ project: title, link_type: 'writeup' }}>
               <a
                 href={links.writeup}
                 target="_blank"
@@ -91,7 +85,6 @@ export default function CaseStudyBody({
               >
                 Write-up
               </a>
-            </TrackClick>
           )}
         </div>
       )}

@@ -12,6 +12,7 @@ Open http://localhost:3000.
 ## Build & Preview
 
 ```bash
+npm run check    # Lints, tests, validates content, and builds /out
 npm run build    # Validates content, then builds static export to /out
 npm run start    # Serves /out locally
 ```
@@ -20,70 +21,85 @@ npm run start    # Serves /out locally
 
 All content lives in `src/data/` as Markdown files with frontmatter. See `src/content/content-types.ts` for the schema.
 
-### Visual editor (recommended)
+### Internal links and inline media
 
-[Pages CMS](https://app.pagescms.org) reads `.pages.yml` and edits the existing Markdown and media files through GitHub. The public site remains a static export and contains no admin route, CMS token, or secret.
+- Write site destinations as root-relative paths such as `/resume#experience` or `/projects/portfolio-site`.
+- Write local media as `/images/file.png`; the file must exist under `public/images`.
+- Never add the deployment prefix such as `/Resume` to Markdown. The content renderer adds `NEXT_PUBLIC_BASE_PATH` during production builds.
+- External links must use an explicit scheme such as `https://`; validation does not make network requests to test external availability.
 
-#### One-time setup
+`npm run validate` rejects unknown site routes, nonexistent project slugs, invalid Resume anchors, unsafe relative paths, unsupported URL schemes, and missing inline local media.
 
-1. Commit and push `.pages.yml` to the repository's default branch.
-2. Open [app.pagescms.org](https://app.pagescms.org).
-3. Sign in with the GitHub account that can edit this repository. Enable two-factor authentication on that account.
-4. Install the Pages CMS GitHub App for **only this repository**, not every repository in the account.
-5. Open `TheDragoRyu/Resume` on the `main` branch. The Profile, Resume sections, Projects, Projects page, Contact page, and Site images editors will appear.
+### Private authoring server (recommended)
 
-#### Routine updates
+The authoring application runs only on Dungeon at `127.0.0.1:4180`. Tailscale Serve terminates tailnet-only HTTPS and injects the authenticated user's identity. The backend accepts only `sanchith.krishnan@gmail.com`, never sends GitHub credentials to the browser, and is not part of the Next.js export.
 
-1. Open the repository in Pages CMS and confirm that the selected branch is `main`.
-2. Choose Profile, Resume sections, Projects, Projects page, Contact page, or Site images.
-3. Edit fields in the form. Rich-text fields support formatted content and image uploads.
-4. Add alt text whenever a project cover image is configured, then save. Pages CMS creates an attributed Git commit.
-5. Check the GitHub Actions deployment. Invalid content or missing image references fail validation and leave the previous successful deployment live.
+Open:
 
-#### Updating the profile photo
+```text
+https://dungeon.tail8f87cd.ts.net:8452
+```
 
-1. Choose **Profile and landing page** in Pages CMS.
-2. Use **Profile photo** to upload or select an AVIF, JPEG, PNG, or WebP image. A square image works best in the circular Resume header.
-3. Save the Profile entry. Pages CMS may create one commit for the media upload and another for the Profile reference.
-4. Confirm that the resulting GitHub Actions deployment succeeds.
-5. Open `/resume/` on the deployed site and verify the new photo; the landing page does not currently render it.
+The authoring workspace provides:
 
-Pages CMS stores the file under `public/images` and writes a root-relative `/images/...` value to `src/data/intro/introduction.md`. During a project-site build, the content loader adds `NEXT_PUBLIC_BASE_PATH`, producing `/Resume/images/...` without changing the Markdown value.
+- all Markdown content under `src/data/`, with editable frontmatter JSON and Markdown bodies;
+- validated project creation and recoverable project deletion;
+- image uploads under `public/images`;
+- the authenticated GitHub repository inventory, including private repositories visible only in the no-store browser session;
+- public-repository publish/sync and featured controls, ordering, generation context, locks, and display/link overrides; and
+- fixed Fetch, Generate, and Check actions with bounded logs. It never exposes an arbitrary command runner.
 
-If the photo does not appear:
+Every content save runs the repository validator. Invalid writes are rolled back. Project deletion moves the file into the gitignored `.project-admin-trash/` recovery directory. All authoring changes remain ordinary local Git changes and must be reviewed before commit.
 
-- confirm that the referenced file exists under `public/images` and is committed;
-- confirm that both the media and Profile commits reached `main` and that the deployment succeeded; and
-- keep the frontmatter value as `/images/...`; do not manually add `/Resume`, because the build adds the configured base path.
+#### Service operation
 
-#### Updating Contact details
+The committed service template is `scripts/systemd/portfolio-project-admin.service`. The installed user service starts automatically and restarts on failure:
 
-1. Choose **Contact page** in Pages CMS.
-2. Use **Page title** and **Search and social description** for the page heading and metadata.
-3. Use **Introduction heading** and **Introduction** for the opening copy.
-4. Edit **Email card** to change its heading, supporting text, or email address.
-5. Edit **Social links card** to add, remove, reorder, or rename HTTPS links. Keep at least one link.
-6. Edit **Location card** to change the displayed location and remote-work availability.
-7. Save and check the GitHub Actions deployment.
+```bash
+systemctl --user status portfolio-project-admin
+systemctl --user restart portfolio-project-admin
+journalctl --user -u portfolio-project-admin -f
+```
 
-These controls write structured frontmatter in `src/data/pages/contact.md`. Keep the Markdown body empty so the form and visual card layout stay synchronized.
+Local identity and endpoint settings live in the gitignored mode-`0600` file `.project-admin.env`.
 
-#### Updating the Projects page and planet
+Tailscale Serve requires one administrator-authorized setup on this machine:
 
-1. Choose **Projects page** in Pages CMS. This is separate from the **Projects** collection of individual case studies.
-2. Use **Page and planet title** to rename both the `/projects` heading and its 3D planet label.
-3. Use **Search, social, and planet description** to update page metadata and the planet's context-panel summary.
-4. Use **Page introduction** to update the copy above the project-card grid.
-5. Save and check the GitHub Actions deployment.
+```bash
+sudo tailscale set --operator=dragoryu
+tailscale serve --bg --https=8452 --yes 4180
+tailscale serve status
+```
 
-These controls write structured frontmatter in `src/data/pages/projects.md`. Keep its Markdown body empty. The hidden `orbit` values control the Projects planet's position, speed, size, and color and are preserved by Pages CMS merge-on-save behavior.
+The first command lets this OS user manage Serve without repeated sudo access. The second adds HTTPS port 8452 without replacing the existing Serve routes. Do not use Tailscale Funnel; Funnel is public and does not provide the identity headers required by this server.
+
+To stop access while keeping the local service installed:
+
+```bash
+tailscale serve --https=8452 off
+```
+
+#### Routine content updates
+
+1. Open the tailnet URL and confirm the displayed Tailscale identity.
+2. Use **Site content** to select a document.
+3. Edit its JSON frontmatter or Markdown body.
+4. Select **Validate and save**. A failed global content validation restores the previous file.
+5. Use **Media** to upload an AVIF, JPEG, PNG, or WebP image, then copy its `/images/...` path into content.
+6. Use **Build actions → Run full quality gate**.
+7. Review `git diff` before committing and pushing.
+
+Fixed Profile, Contact, Projects-page, and Resume-section records can be edited but not deleted. Project documents can be created or moved to recovery. Keep structured Contact and Projects-page Markdown bodies empty.
 
 #### Security and recovery
 
-- Keep the GitHub App limited to this repository and revoke it from GitHub settings when it is no longer needed.
-- Do not place tokens, private contact data, or secrets in content fields or uploaded files; all committed content and media are public.
-- Fixed profile, Contact, Projects page, and Resume-section files cannot be created, renamed, or deleted from the editor. Project renames are disabled; Git history can recover an accidental project or media deletion.
-- Review the commit diff in GitHub for sensitive or high-impact changes. The editor does not bypass repository history or build validation.
+- The backend listens only on loopback, as required when trusting Tailscale Serve identity headers.
+- Mutations require an exact allowed Tailscale identity, same-origin HTTPS, JSON content type, and a per-process CSRF token.
+- Responses use `Cache-Control: no-store`, a restrictive Content Security Policy, clickjacking protection, and no-referrer behavior.
+- Repository inventory is held only in server/browser memory. Only selected public repository identifiers enter the mode-`0600` local selection file.
+- Private repositories are visible to the authorized user for inventory awareness but cannot be published, cached, generated, or featured.
+- Do not place secrets or private information in Markdown or uploaded media; committed content and media are public.
+- Recover deleted project files from `.project-admin-trash/` before committing if deletion was accidental. Git history remains the final recovery layer for committed content.
 
 ### Manual fallback: adding a project
 
@@ -102,80 +118,47 @@ Push to `main` branch. GitHub Actions will build and deploy to GitHub Pages auto
 
 ### Environment Variables
 - `NEXT_PUBLIC_BASE_PATH`: Set to `/repo-name` for project sites, empty for user sites.
-- `NEXT_PUBLIC_SITE_URL`: Full URL of the deployed site.
+- `NEXT_PUBLIC_SITE_URL`: Origin of the deployed site, without the repository path (for example `https://example.com`).
 
-## Syncing GitHub Projects
+## GitHub project ingestion
 
-Automates project content generation from GitHub repos marked as "featured".
+The **GitHub projects** area of the private authoring server replaces the former CLI selector.
 
-### Prerequisites
-- **Claude CLI** (`claude`): Required for content generation. Install via `npm install -g @anthropic-ai/claude-code`.
-- **GITHUB_TOKEN** (optional): Set in `.env.local` or environment. Without it, the GitHub API allows 60 requests/hour (sufficient for small repo sets). With it, 5000 requests/hour.
+### Authentication and privacy
 
-### Configuration
+- The server reads the active GitHub CLI credential from `gh auth token`, or `GITHUB_TOKEN` from the service environment.
+- The token remains server-side and is never logged, persisted by the application, or returned to the browser.
+- The authenticated `/user/repos` inventory is returned only to the allowed Tailscale identity with no-store headers.
+- Private repository names can be reviewed in the authenticated workspace, but private repositories are disabled for publication. The save endpoint independently re-fetches visibility and rejects private selections.
+- Selected public repositories live in `.featured-repos.local.json`; fetched public metadata lives in `.project-cache.json`. Both are gitignored and mode `0600`.
+- A selected public repository and generated case study become visible after their Markdown is committed and deployed.
 
-Edit `scripts/featured-repos.json`:
+### Workflow
 
-```json
-{
-  "defaults": {
-    "categoryId": "cat-experience",
-    "featured": false
-  },
-  "repos": [
-    {
-      "repo": "owner/repo-name",
-      "order": 4,
-      "featured": true,
-      "overrides": {
-        "title": "Custom Display Title",
-        "slug": "custom-slug",
-        "description": "Override auto-generated description",
-        "tags": ["React", "TypeScript"],
-        "links": { "demo": "https://demo.example.com" }
-      }
-    }
-  ]
-}
-```
+1. Open **GitHub projects**.
+2. Search the complete authenticated inventory.
+3. Select public repositories for publication and choose which are featured.
+4. Optionally edit ordering, category, generation context, lock state, display overrides, tags, and URLs.
+5. Save. Existing project Markdown receives the new `featured` state immediately.
+6. Open **Build actions** and run **Fetch selected repositories**.
+7. Run **Generate missing project content**.
+8. Review the generated Markdown in **Site content**.
+9. Run **Run full quality gate**, review the Git diff, and commit only approved content.
 
-- `repo` (required): `owner/name` format.
-- `order` (required): Unique integer. Must not collide with existing projects.
-- `categoryId`: Required at `defaults` or per-repo level.
-- `featured`: Optional. Defaults to `defaults.featured`.
-- `overrides`: All optional. Auto-derived from GitHub data if omitted.
-- `links.github`: Always auto-set from the repo URL (not configurable).
-
-### Commands
+The command-line fetch and generation scripts remain available as maintenance fallbacks:
 
 ```bash
-# Full pipeline (fetch + generate)
-npm run sync-projects
-
-# Fetch only (creates .project-cache.json)
 npm run sync:fetch
-
-# Generate only (reads cache, writes .md files)
 npm run sync:generate
-
-# Overwrite all existing generated files
-npm run sync:generate -- --force
-
-# Overwrite a specific slug
-npm run sync:generate -- --force=my-project
+npm run sync-projects
 ```
-
-### Post-generation workflow
-
-1. Review the generated `.md` files in `src/data/projects/`.
-2. Run `npm run validate` to check content integrity.
-3. Run `npm run dev` to preview locally.
-4. Commit the new/updated `.md` files.
 
 ### Troubleshooting
 
-- **Rate limit exceeded**: Set `GITHUB_TOKEN` in `.env.local`. The error message shows when the limit resets.
-- **`claude` CLI not found**: Install with `npm install -g @anthropic-ai/claude-code`.
-- **Missing cache**: Run `npm run sync:fetch` before `npm run sync:generate`.
-- **Validation errors**: Check the error output — common issues are duplicate slugs/IDs or missing `categoryId` references. Fix in `featured-repos.json` overrides or the generated file.
-- **Malformed Claude output**: The script skips repos where Claude returns content missing required sections. Re-run with `--force=<slug>` to retry.
+- **401 from the authoring server:** Use the Tailscale Serve URL, not localhost or the LAN address, and confirm the configured allowed login.
+- **Origin rejected:** Open the exact HTTPS origin in `.project-admin.env`; do not use an IP alias.
+- **GitHub authentication failed:** Run `gh auth status` and refresh the active account login.
+- **Private repository rejected:** Automated publication is intentionally public-only. Write a separately reviewed, sanitized case study when source must remain private.
+- **Content save rejected:** Fix every validation error shown; the prior file was restored.
+- **Service unavailable:** Check `systemctl --user status portfolio-project-admin` and the user journal.
+- **Legacy cache:** Run Fetch again before Generate.

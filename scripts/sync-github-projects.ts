@@ -1,32 +1,26 @@
-import fs from 'fs';
-import path from 'path';
+import path from 'node:path';
+import {
+  type FeaturedRepoConfig,
+  type FeaturedReposDefaults,
+  getGitHubHeaders,
+  loadFeaturedReposConfig,
+  resolveGitHubToken,
+  writePrivateJsonFile,
+} from './project-sync-config';
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-interface RepoOverrides {
-  title?: string;
-  slug?: string;
-  description?: string;
-  tags?: string[];
-  links?: { demo?: string; writeup?: string };
-}
-
-interface FeaturedRepoConfig {
-  repo: string;
-  order: number;
-  categoryId?: string;
-  featured?: boolean;
-  overrides?: RepoOverrides;
-}
-
-interface FeaturedReposFile {
-  defaults: {
-    categoryId: string;
-    featured: boolean;
-  };
-  repos: FeaturedRepoConfig[];
+interface GitHubRepoResponse {
+  name: string;
+  full_name: string;
+  private: boolean;
+  description: string | null;
+  homepage: string | null;
+  html_url: string;
+  stargazers_count: number;
+  forks_count: number;
+  topics: string[];
+  language: string | null;
+  created_at: string;
+  pushed_at: string;
 }
 
 interface GitHubRepoData {
@@ -53,115 +47,44 @@ interface CachedRepo {
 
 interface CacheFile {
   generatedAt: string;
+  defaults: FeaturedReposDefaults;
   repos: CachedRepo[];
 }
 
-// ---------------------------------------------------------------------------
-// .env.local parser (no dotenv dependency)
-// ---------------------------------------------------------------------------
-
-function loadEnvLocal(): void {
-  const envPath = path.join(process.cwd(), '.env.local');
-  if (!fs.existsSync(envPath)) return;
-
-  const content = fs.readFileSync(envPath, 'utf-8');
-  for (const line of content.split('\n')) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('#')) continue;
-    const eqIndex = trimmed.indexOf('=');
-    if (eqIndex === -1) continue;
-    const key = trimmed.slice(0, eqIndex).trim();
-    let value = trimmed.slice(eqIndex + 1).trim();
-    // Strip surrounding quotes
-    if (
-      (value.startsWith('"') && value.endsWith('"')) ||
-      (value.startsWith("'") && value.endsWith("'"))
-    ) {
-      value = value.slice(1, -1);
-    }
-    if (!process.env[key]) {
-      process.env[key] = value;
-    }
-  }
-}
-
-// ---------------------------------------------------------------------------
-// GitHub API helpers
-// ---------------------------------------------------------------------------
-
 const GITHUB_API = 'https://api.github.com';
-
-function getHeaders(): Record<string, string> {
-  const headers: Record<string, string> = {
-    Accept: 'application/vnd.github.v3+json',
-    'User-Agent': 'portfolio-sync-script',
-  };
-  if (process.env.GITHUB_TOKEN) {
-    headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
-  }
-  return headers;
-}
+const CACHE_PATH = path.join(process.cwd(), '.project-cache.json');
 
 async function fetchWithRetry(
   url: string,
   headers: Record<string, string>
 ): Promise<Response> {
   try {
-    const res = await fetch(url, { headers });
-    return res;
+    return await fetch(url, { headers });
   } catch {
-    // Retry once after 2s
-    console.warn(`  Network error for ${url}, retrying in 2s...`);
-    await new Promise((r) => setTimeout(r, 2000));
+    console.warn('  GitHub request failed, retrying once...');
+    await new Promise((resolve) => setTimeout(resolve, 2000));
     return fetch(url, { headers });
   }
 }
 
-function handleRateLimit(res: Response): never {
-  const resetHeader = res.headers.get('x-ratelimit-reset');
-  const resetTime = resetHeader
-    ? new Date(parseInt(resetHeader) * 1000).toLocaleTimeString()
-    : 'unknown';
-  console.error(
-    `\nGitHub API rate limit exceeded. Resets at ${resetTime}.\n` +
-      'Set GITHUB_TOKEN in .env.local or environment to increase the limit (5000 req/hr).'
-  );
-  process.exit(1);
-}
-
-// ---------------------------------------------------------------------------
-// Config validation
-// ---------------------------------------------------------------------------
-
-function validateConfig(config: FeaturedReposFile): void {
-  if (!config.defaults?.categoryId) {
-    throw new Error('featured-repos.json: defaults.categoryId is required');
+function throwForAuthenticationOrRateLimit(response: Response): void {
+  if (response.status === 401) {
+    throw new Error(
+      'GitHub rejected the credential. Run `gh auth login` again or replace GITHUB_TOKEN.'
+    );
   }
 
-  const orders = new Set<number>();
-  for (const repo of config.repos) {
-    if (!repo.repo || !repo.repo.includes('/')) {
-      throw new Error(
-        `featured-repos.json: invalid repo format "${repo.repo}" — must be "owner/name"`
-      );
-    }
-    if (typeof repo.order !== 'number') {
-      throw new Error(
-        `featured-repos.json: "order" is required for repo "${repo.repo}"`
-      );
-    }
-    if (orders.has(repo.order)) {
-      throw new Error(
-        `featured-repos.json: duplicate order ${repo.order} for repo "${repo.repo}"`
-      );
-    }
-    orders.add(repo.order);
+  if (
+    response.status === 403 &&
+    response.headers.get('x-ratelimit-remaining') === '0'
+  ) {
+    const resetHeader = response.headers.get('x-ratelimit-reset');
+    const resetTime = resetHeader
+      ? new Date(Number(resetHeader) * 1000).toLocaleTimeString()
+      : 'an unknown time';
+    throw new Error(`GitHub API rate limit exceeded; it resets at ${resetTime}.`);
   }
 }
-
-// ---------------------------------------------------------------------------
-// Repo fetching
-// ---------------------------------------------------------------------------
 
 async function fetchRepo(
   config: FeaturedRepoConfig,
@@ -170,40 +93,53 @@ async function fetchRepo(
   const { repo } = config;
   console.log(`Fetching ${repo}...`);
 
-  // 1. Repo metadata
-  const repoRes = await fetchWithRetry(`${GITHUB_API}/repos/${repo}`, headers);
-  if (repoRes.status === 403) handleRateLimit(repoRes);
-  if (repoRes.status === 404) {
-    console.error(`  Repo not found: ${repo} — skipping`);
-    return null;
-  }
-  if (!repoRes.ok) {
-    console.error(`  Unexpected status ${repoRes.status} for ${repo} — skipping`);
-    return null;
-  }
-  const repoData = (await repoRes.json()) as GitHubRepoData;
+  const repoResponse = await fetchWithRetry(
+    `${GITHUB_API}/repos/${repo}`,
+    headers
+  );
+  throwForAuthenticationOrRateLimit(repoResponse);
 
-  // 2. Languages
-  const langRes = await fetchWithRetry(
+  if (repoResponse.status === 404) {
+    console.error(`  Repository not found: ${repo} — skipping`);
+    return null;
+  }
+  if (!repoResponse.ok) {
+    console.error(
+      `  GitHub returned status ${repoResponse.status} for ${repo} — skipping`
+    );
+    return null;
+  }
+
+  const repoData = (await repoResponse.json()) as GitHubRepoResponse;
+  if (repoData.private) {
+    throw new Error(
+      'Refusing to cache or publish a private repository. ' +
+        'Only public repositories can be featured.'
+    );
+  }
+
+  const languageResponse = await fetchWithRetry(
     `${GITHUB_API}/repos/${repo}/languages`,
     headers
   );
-  if (langRes.status === 403) handleRateLimit(langRes);
-  const languages: Record<string, number> = langRes.ok
-    ? ((await langRes.json()) as Record<string, number>)
+  throwForAuthenticationOrRateLimit(languageResponse);
+  const languages: Record<string, number> = languageResponse.ok
+    ? ((await languageResponse.json()) as Record<string, number>)
     : {};
 
-  // 3. README
-  const readmeRes = await fetchWithRetry(
+  const readmeResponse = await fetchWithRetry(
     `${GITHUB_API}/repos/${repo}/readme`,
     headers
   );
-  if (readmeRes.status === 403) handleRateLimit(readmeRes);
+  throwForAuthenticationOrRateLimit(readmeResponse);
   let readme = '';
-  if (readmeRes.ok) {
-    const readmeData = (await readmeRes.json()) as { content: string; encoding: string };
+  if (readmeResponse.ok) {
+    const readmeData = (await readmeResponse.json()) as {
+      content: string;
+      encoding: string;
+    };
     if (readmeData.encoding === 'base64') {
-      readme = Buffer.from(readmeData.content, 'base64').toString('utf-8');
+      readme = Buffer.from(readmeData.content, 'base64').toString('utf8');
     }
   }
 
@@ -228,59 +164,49 @@ async function fetchRepo(
   };
 }
 
-// ---------------------------------------------------------------------------
-// Main
-// ---------------------------------------------------------------------------
+async function main(): Promise<void> {
+  const config = loadFeaturedReposConfig();
+  const token = resolveGitHubToken();
+  const headers = getGitHubHeaders(token);
 
-async function main() {
-  loadEnvLocal();
-
-  const configPath = path.join(process.cwd(), 'scripts', 'featured-repos.json');
-  if (!fs.existsSync(configPath)) {
-    console.error('Missing scripts/featured-repos.json');
-    process.exit(1);
-  }
-
-  const config: FeaturedReposFile = JSON.parse(
-    fs.readFileSync(configPath, 'utf-8')
-  );
-  validateConfig(config);
-
-  if (config.repos.length === 0) {
-    console.log('No repos configured in featured-repos.json. Nothing to fetch.');
-    return;
-  }
-
-  const headers = getHeaders();
   console.log(
-    process.env.GITHUB_TOKEN
+    token
       ? 'Using authenticated GitHub API requests.'
-      : 'Using unauthenticated GitHub API requests (60 req/hr limit).'
+      : 'Using unauthenticated requests for selected public repositories.'
   );
 
   const cached: CachedRepo[] = [];
   for (const repoConfig of config.repos) {
     try {
       const result = await fetchRepo(repoConfig, headers);
-      if (result) cached.push(result);
-    } catch (err) {
-      console.error(`  Failed to fetch ${repoConfig.repo}: ${err} — skipping`);
+      if (result) {
+        cached.push(result);
+      }
+    } catch (error) {
+      console.error(
+        `  Failed to fetch ${repoConfig.repo}: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
     }
   }
 
-  const cachePath = path.join(process.cwd(), '.project-cache.json');
   const cacheFile: CacheFile = {
     generatedAt: new Date().toISOString(),
+    defaults: config.defaults,
     repos: cached,
   };
-  fs.writeFileSync(cachePath, JSON.stringify(cacheFile, null, 2));
+  writePrivateJsonFile(CACHE_PATH, cacheFile);
 
   console.log(
-    `\nDone. Cached ${cached.length}/${config.repos.length} repo(s) to .project-cache.json`
+    `Done. Cached ${cached.length}/${config.repos.length} public repository ` +
+      `selection(s) to .project-cache.json.`
   );
 }
 
-main().catch((err) => {
-  console.error('Sync script failed:', err);
-  process.exit(1);
+main().catch((error) => {
+  console.error(
+    `Sync failed: ${error instanceof Error ? error.message : String(error)}`
+  );
+  process.exitCode = 1;
 });

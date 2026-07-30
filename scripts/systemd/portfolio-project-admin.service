@@ -1,0 +1,24 @@
+[Unit]
+Description=Private portfolio authoring server
+After=network-online.target tailscaled.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/personal-projects/Resume
+EnvironmentFile=%h/personal-projects/Resume/.project-admin.env
+Environment=NODE_ENV=development
+ExecStart=/usr/bin/npm run config:server
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=%h/personal-projects/Resume
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+LockPersonality=true
+RestrictRealtime=true
+
+[Install]
+WantedBy=default.target

@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { validateMarkdownReferences } from './markdown-reference-validator';
 import type {
   BaseFrontmatter,
   ContactFrontmatter,
@@ -25,17 +26,24 @@ const REQUIRED_BASE_FIELDS: (keyof BaseFrontmatter)[] = [
 const VALID_TYPES = ['intro', 'category', 'project', 'page'];
 const KEBAB_CASE_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const ALLOWED_IMAGE_EXTENSIONS = new Set(['.avif', '.jpeg', '.jpg', '.png', '.webp']);
+const FIXED_ROUTES = new Set(['/', '/resume', '/projects', '/contact']);
 
 export function validateContent(items: ContentItem[]): ValidationError[] {
   const errors: ValidationError[] = [];
   const slugs = new Map<string, string>();
   const ids = new Map<string, string>();
   const categoryIds = new Set<string>();
+  const resumeAnchors = new Set<string>();
+  const internalRoutes = new Set(FIXED_ROUTES);
 
   // First pass: collect category IDs
   for (const item of items) {
     if (item.frontmatter.type === 'category') {
       categoryIds.add(item.frontmatter.id);
+      if (item.frontmatter.slug) resumeAnchors.add(item.frontmatter.slug);
+    }
+    if (item.frontmatter.type === 'project' && item.frontmatter.slug) {
+      internalRoutes.add(`/projects/${item.frontmatter.slug}`);
     }
   }
 
@@ -145,6 +153,14 @@ export function validateContent(items: ContentItem[]): ValidationError[] {
     if (fm.type === 'page' && fm.slug === 'projects') {
       validateProjectsPage(item, label, errors);
     }
+
+    validateMarkdownReferences(
+      item,
+      label,
+      internalRoutes,
+      resumeAnchors,
+      errors
+    );
   }
 
   return errors;

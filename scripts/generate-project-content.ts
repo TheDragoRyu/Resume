@@ -4,34 +4,16 @@ import { execFile } from 'child_process';
 import matter from 'gray-matter';
 import { getAllContent } from '../src/content/content-loader';
 import { validateContent } from '../src/content/content-validator';
-import type { ContentItem, ProjectFrontmatter } from '../src/content/content-types';
+import type { ProjectFrontmatter } from '../src/content/content-types';
+import type {
+  FeaturedRepoConfig,
+  FeaturedReposDefaults,
+} from './project-sync-config';
 
 // ---------------------------------------------------------------------------
 // Types (matching sync-github-projects.ts output)
 // ---------------------------------------------------------------------------
 
-interface RepoOverrides {
-  title?: string;
-  slug?: string;
-  description?: string;
-  tags?: string[];
-  links?: { demo?: string; writeup?: string };
-}
-
-interface FeaturedRepoConfig {
-  repo: string;
-  order: number;
-  lock?: boolean;
-  context?: string;
-  categoryId?: string;
-  featured?: boolean;
-  overrides?: RepoOverrides;
-}
-
-interface FeaturedReposDefaults {
-  categoryId: string;
-  featured: boolean;
-}
 
 interface GitHubRepoData {
   name: string;
@@ -57,6 +39,7 @@ interface CachedRepo {
 
 interface CacheFile {
   generatedAt: string;
+  defaults: FeaturedReposDefaults;
   repos: CachedRepo[];
 }
 
@@ -66,7 +49,6 @@ interface CacheFile {
 
 const PROJECTS_DIR = path.join(process.cwd(), 'src', 'data', 'projects');
 const CACHE_PATH = path.join(process.cwd(), '.project-cache.json');
-const CONFIG_PATH = path.join(process.cwd(), 'scripts', 'featured-repos.json');
 const MAX_README_CHARS = 3000;
 
 const SYSTEM_PROMPT = `You write short project case studies for a developer's portfolio website. The audience is recruiters and hiring managers — they care about what the project DOES, what a user SEES, and what skills it demonstrates. They do not care about internal code structure, build pipelines, or developer tooling.
@@ -351,9 +333,13 @@ async function main() {
   }
 
   const cache: CacheFile = JSON.parse(fs.readFileSync(CACHE_PATH, 'utf-8'));
-  const config: { defaults: FeaturedReposDefaults } = JSON.parse(
-    fs.readFileSync(CONFIG_PATH, 'utf-8')
-  );
+  if (!cache.defaults?.categoryId) {
+    console.error(
+      'The project cache predates secure local configuration. ' +
+        'Run npm run sync:fetch again.'
+    );
+    process.exit(1);
+  }
 
   if (cache.repos.length === 0) {
     console.log('Cache is empty. Nothing to generate.');
@@ -377,7 +363,7 @@ async function main() {
 
     // Lock: never overwrite locked repos, even with --force
     if (repo.config.lock) {
-      console.log(`Skipping ${slug} — locked in featured-repos.json`);
+      console.log(`Skipping ${slug} — locked in the local project selection`);
       skipped++;
       continue;
     }
@@ -427,7 +413,7 @@ async function main() {
     // Build frontmatter with AI tags and description
     const frontmatter = buildFrontmatter(
       repo,
-      config.defaults,
+      cache.defaults,
       aiTags,
       aiDescription,
       existingProject

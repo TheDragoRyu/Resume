@@ -4,7 +4,6 @@ import { useCallback, useState, useMemo } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import posthog from 'posthog-js';
 import SolarSystem from './SolarSystem';
 import ContextPanel from './ContextPanel';
 import SceneKeyboardNav from './SceneKeyboardNav';
@@ -39,10 +38,9 @@ export default function SceneCanvas({ sceneGraph, isMobile }: SceneCanvasProps) 
   const handleSelect = useCallback(
     (node: SceneNode) => {
       dismissHint();
-      posthog.capture('scene_node_selected', { node: node.label, type: node.type, mode: state.mode });
       selectNode(node);
     },
-    [state.mode, selectNode, dismissHint],
+    [selectNode, dismissHint],
   );
 
   // Primary action in ContextPanel
@@ -64,7 +62,6 @@ export default function SceneCanvas({ sceneGraph, isMobile }: SceneCanvasProps) 
     return {
       label,
       handler: () => {
-        posthog.capture('scene_panel_action', { node: selectedNode.label, action: 'open', route: selectedNode.route });
         setNavigating(true);
         router.push(selectedNode.route);
       },
@@ -78,7 +75,6 @@ export default function SceneCanvas({ sceneGraph, isMobile }: SceneCanvasProps) 
       return {
         label: 'Contact',
         handler: () => {
-          posthog.capture('scene_panel_action', { node: 'sun', action: 'contact' });
           router.push('/contact');
         },
       };
@@ -93,10 +89,6 @@ export default function SceneCanvas({ sceneGraph, isMobile }: SceneCanvasProps) 
       return {
         label: `Explore ${projectCount} ${projectCount === 1 ? 'Project' : 'Projects'}`,
         handler: () => {
-          posthog.capture('scene_panel_action', {
-            node: selectedNode.label,
-            action: 'explore',
-          });
           explorePlanet(selectedNode);
         },
       };
@@ -184,7 +176,6 @@ export default function SceneCanvas({ sceneGraph, isMobile }: SceneCanvasProps) 
             : 'Click a planet for Resume or Projects'}
           <button
             onClick={() => {
-              posthog.capture('scene_hint_dismissed');
               dismissHint();
             }}
             className={`ml-3 text-accent hover:underline ${FOCUS_RING} rounded`}
@@ -202,7 +193,6 @@ export default function SceneCanvas({ sceneGraph, isMobile }: SceneCanvasProps) 
             <button
               type="button"
               onClick={() => {
-                posthog.capture('scene_back_to_system');
                 backToSystem();
               }}
               className={`font-medium text-accent transition-colors hover:text-accent-hover ${FOCUS_RING} rounded`}

@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en" class="h-full bg-slate-950">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex,nofollow,noarchive" />
+    <title>Portfolio Authoring</title>
+    <link rel="stylesheet" href="/admin.css" />
+    <script src="/app.js" defer></script>
+  </head>
+  <body class="min-h-full bg-slate-950 text-slate-100 antialiased">
+    <header class="border-b border-cyan-400/20 bg-slate-950/95">
+      <div class="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-4 py-5 sm:px-6">
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-[0.25em] text-cyan-300">Tailnet-only workspace</p>
+          <h1 class="mt-1 text-2xl font-bold text-white">Portfolio Authoring</h1>
+        </div>
+        <div class="flex flex-wrap items-center justify-end gap-4">
+          <a
+            href="https://thedragoryu.github.io/Resume/"
+            target="_blank"
+            rel="noreferrer"
+            class="inline-flex min-h-11 items-center rounded-lg border border-cyan-400/50 px-4 py-2 font-semibold text-cyan-200 transition-colors hover:bg-cyan-400/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+          >
+            Open published portfolio
+            <span aria-hidden="true" class="ml-2">↗</span>
+            <span class="sr-only"> (opens in a new tab)</span>
+          </a>
+          <div class="text-right text-sm text-slate-400">
+            <p id="identity">Authenticating…</p>
+            <p>Inventory and credentials remain on Dungeon.</p>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="mx-auto max-w-7xl px-4 py-6 sm:px-6">
+      <div id="notice" role="status" aria-live="polite" class="mb-5 hidden rounded-lg border px-4 py-3 text-sm"></div>
+
+      <nav aria-label="Authoring areas" class="mb-6 flex flex-wrap gap-2">
+        <button class="tab-button rounded-lg bg-cyan-400 px-4 py-2 font-semibold text-slate-950" data-tab="projects">GitHub projects</button>
+        <button class="tab-button rounded-lg border border-slate-700 px-4 py-2 font-semibold text-slate-200" data-tab="content">Site content</button>
+        <button class="tab-button rounded-lg border border-slate-700 px-4 py-2 font-semibold text-slate-200" data-tab="media">Media</button>
+        <button class="tab-button rounded-lg border border-slate-700 px-4 py-2 font-semibold text-slate-200" data-tab="jobs">Build actions</button>
+      </nav>
+
+      <section id="tab-projects" class="tab-panel">
+        <div class="mb-5 grid gap-4 rounded-xl border border-slate-800 bg-slate-900 p-4 lg:grid-cols-[1fr_auto_auto]">
+          <label class="grid gap-1 text-sm font-medium">
+            Search repositories
+            <input id="repo-search" type="search" class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white" placeholder="Name or description" />
+          </label>
+          <label class="grid gap-1 text-sm font-medium">
+            Default category
+            <input id="default-category" list="category-options" class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white" />
+          </label>
+          <button id="save-projects" class="self-end rounded-lg bg-cyan-400 px-5 py-2 font-bold text-slate-950 hover:bg-cyan-300">Save configuration</button>
+        </div>
+        <datalist id="category-options"></datalist>
+        <p class="mb-4 text-sm text-slate-400">Private repositories are visible only in this authenticated session and cannot be selected for publication.</p>
+        <div id="repo-list" class="grid gap-3"></div>
+      </section>
+
+      <section id="tab-content" class="tab-panel hidden">
+        <div class="grid gap-5 lg:grid-cols-[20rem_1fr]">
+          <aside class="rounded-xl border border-slate-800 bg-slate-900 p-4">
+            <div class="mb-4 flex items-center justify-between gap-2">
+              <h2 class="font-bold text-white">Markdown content</h2>
+              <button id="new-project" class="rounded-md border border-cyan-400/50 px-3 py-1.5 text-sm text-cyan-200">New project</button>
+            </div>
+            <input id="content-search" type="search" class="mb-3 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Filter content" />
+            <div id="content-list" class="grid max-h-[65vh] gap-1 overflow-auto"></div>
+          </aside>
+
+          <form id="content-form" class="rounded-xl border border-slate-800 bg-slate-900 p-4">
+            <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p class="text-xs uppercase tracking-wider text-slate-500">Editing</p>
+                <h2 id="content-path" class="break-all font-semibold text-white">Choose a document</h2>
+              </div>
+              <div class="flex gap-2">
+                <button id="delete-content" type="button" class="hidden rounded-lg border border-rose-500/60 px-4 py-2 text-rose-200">Delete project</button>
+                <button id="save-content" type="submit" class="rounded-lg bg-cyan-400 px-4 py-2 font-bold text-slate-950 disabled:opacity-40" disabled>Validate and save</button>
+              </div>
+            </div>
+            <label class="grid gap-2 text-sm font-medium">
+              Frontmatter JSON
+              <textarea id="frontmatter-editor" spellcheck="false" class="min-h-72 rounded-lg border border-slate-700 bg-slate-950 p-3 font-mono text-sm text-cyan-100" disabled></textarea>
+            </label>
+            <label class="mt-4 grid gap-2 text-sm font-medium">
+              Markdown body
+              <textarea id="body-editor" spellcheck="true" class="min-h-96 rounded-lg border border-slate-700 bg-slate-950 p-3 font-mono text-sm text-slate-100" disabled></textarea>
+            </label>
+          </form>
+        </div>
+      </section>
+
+      <section id="tab-media" class="tab-panel hidden">
+        <div class="rounded-xl border border-slate-800 bg-slate-900 p-5">
+          <h2 class="text-lg font-bold text-white">Site images</h2>
+          <p class="mt-1 text-sm text-slate-400">PNG, JPEG, WebP, or AVIF; maximum 10 MiB. Uploads are written under <code>/public/images</code>.</p>
+          <div class="mt-4 flex flex-wrap items-end gap-3">
+            <label class="grid gap-1 text-sm font-medium">
+              Choose image
+              <input id="media-input" type="file" accept=".png,.jpg,.jpeg,.webp,.avif" class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2" />
+            </label>
+            <button id="upload-media" class="rounded-lg bg-cyan-400 px-4 py-2 font-bold text-slate-950">Upload</button>
+          </div>
+          <div id="media-list" class="mt-6 grid gap-2 sm:grid-cols-2 lg:grid-cols-3"></div>
+        </div>
+      </section>
+
+      <section id="tab-jobs" class="tab-panel hidden">
+        <div class="rounded-xl border border-slate-800 bg-slate-900 p-5">
+          <h2 class="text-lg font-bold text-white">Fixed maintenance actions</h2>
+          <p class="mt-1 text-sm text-slate-400">Only these predefined repository commands can run. One job is allowed at a time.</p>
+          <div class="mt-4 flex flex-wrap gap-3">
+            <button data-job="fetch" class="job-button rounded-lg border border-cyan-400/50 px-4 py-2 text-cyan-200">Fetch selected repositories</button>
+            <button data-job="generate" class="job-button rounded-lg border border-cyan-400/50 px-4 py-2 text-cyan-200">Generate missing project content</button>
+            <button data-job="check" class="job-button rounded-lg bg-cyan-400 px-4 py-2 font-bold text-slate-950">Run full quality gate</button>
+          </div>
+          <div class="mt-5 flex items-center justify-between">
+            <h3 id="job-title" class="font-semibold text-white">No jobs yet</h3>
+            <span id="job-status" class="text-sm text-slate-400"></span>
+          </div>
+          <pre id="job-output" class="mt-3 min-h-64 max-h-[60vh] overflow-auto whitespace-pre-wrap rounded-lg border border-slate-800 bg-black p-4 text-xs text-emerald-300"></pre>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

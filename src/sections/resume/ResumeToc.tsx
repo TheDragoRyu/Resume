@@ -1,7 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import posthog from 'posthog-js';
+import { useState, useEffect } from 'react';
 
 interface TocItem {
   slug: string;
@@ -14,15 +13,6 @@ interface ResumeTocProps {
 
 export default function ResumeToc({ items }: ResumeTocProps) {
   const [activeSlug, setActiveSlug] = useState<string | null>(null);
-  const viewedSections = useRef<Set<string>>(new Set());
-
-  useEffect(() => {
-    if (activeSlug && !viewedSections.current.has(activeSlug)) {
-      viewedSections.current.add(activeSlug);
-      posthog.capture('resume_section_viewed', { section: activeSlug });
-    }
-  }, [activeSlug]);
-
   useEffect(() => {
     const elements = items
       .map(({ slug }) => document.getElementById(slug))
@@ -58,7 +48,6 @@ export default function ResumeToc({ items }: ResumeTocProps) {
           <li key={slug}>
             <a
               href={`#${slug}`}
-              onClick={() => posthog.capture('resume_toc_clicked', { section: slug, device: 'desktop' })}
               className={`text-sm transition-colors hover:text-accent ${
                 activeSlug === slug
                   ? 'font-semibold text-accent'

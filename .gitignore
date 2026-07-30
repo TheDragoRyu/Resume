@@ -35,8 +35,11 @@ next-env.d.ts
 # claude code
 .claude/
 
-# project sync cache
+# project sync local state
 .project-cache.json
+.featured-repos.local.json*
+.project-admin.env
+.project-admin-trash/
 
 # vercel
 .vercel

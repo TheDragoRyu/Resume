@@ -108,14 +108,13 @@ export function useSceneNavigation(sceneGraph: SceneNode) {
 
   const [state, dispatch] = useReducer(sceneReducer, initialState);
 
+  const focusedPlanetSlug =
+    state.mode === 'planet' ? state.focusedPlanet.slug : null;
+
   // Sync hash to URL when state changes
   useEffect(() => {
-    if (state.mode === 'planet') {
-      setHash(state.focusedPlanet.slug);
-    } else {
-      setHash(null);
-    }
-  }, [state.mode, state.mode === 'planet' ? (state as PlanetViewState).focusedPlanet.slug : null]);
+    setHash(focusedPlanetSlug);
+  }, [focusedPlanetSlug]);
 
   // Listen for browser back/forward
   useEffect(() => {

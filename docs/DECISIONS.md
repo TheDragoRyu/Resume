@@ -454,3 +454,103 @@ src/data/projects/*.md      (committed source of truth)
 - The system view gains another outer planet, increasing scene density slightly.
 - Project `categoryId` remains required for content taxonomy even though it no longer determines a moon's visual parent.
 - This decision supersedes the project-parenting portion of **Resume-First Planet Actions** while preserving its select-then-confirm interaction model.
+
+## 2026-07-28: Deployment-Safe Content URLs and Quality Gates
+
+**Decision:** Use one idempotent site-URL resolver for content and generated public URLs, validate Markdown references before export, and gate pull requests and deployments with ESLint, Vitest, content validation, and the static build.
+
+**Changes:**
+
+- Root-relative Markdown links and images receive the configured base path during rendering; source Markdown never embeds the deployment prefix.
+- Validation builds a route index from fixed routes, generated project slugs, and Resume anchors, and rejects unresolved internal links or missing local media.
+- Metadata, Open Graph images, sitemap, robots, and structured content assets use the same normalized site-origin/base-path contract.
+- ESLint 9 and Vitest 4 cover URL handling, content mapping and validation, scene construction, route generation, filtering, and keyboard/focus behavior.
+- GitHub Actions uses Node.js 22, runs the aggregate quality command for pull requests and deployable revisions, and deploys only a successful static artifact.
+
+**Rationale:**
+
+- Raw HTML produced from Markdown does not receive Next.js Link base-path handling automatically.
+- A shared URL contract prevents local and GitHub Pages behavior from drifting.
+- Source validation catches content failures earlier than a manual deployed-site review.
+- Focused tests protect build-time projections and critical client interactions before future feature work.
+
+**Trade-offs:**
+
+- Internal Markdown links must use the documented root-relative convention.
+- External HTTP availability is not checked during builds, avoiding flaky network-dependent validation.
+- The additional development dependencies and test execution increase installation and CI time.
+
+## 2026-07-28: Production Analytics Disabled
+
+**Decision:** Remove PostHog and ship the production portfolio without analytics or interaction tracking. This supersedes the March 7 PostHog decisions while preserving them as history.
+
+**Changes:**
+
+- Removed the PostHog provider, SDK dependency, click wrapper, pageview capture, and custom event calls.
+- Removed analytics environment variables and analytics promises from current-state documentation.
+- Preserved navigation, project filtering, Resume observation, and 3D interaction behavior independently of telemetry.
+
+**Rationale:**
+
+- Production analytics was not configured in the deployment workflow.
+- The site does not currently require behavioral telemetry to deliver its portfolio and resume goals.
+- Removing the unused runtime dependency reduces third-party code and eliminates an unresolved production configuration obligation.
+
+**Trade-offs:**
+
+- Visitor funnels and interaction usage are no longer measurable.
+- Reintroducing analytics requires a new explicit product and architecture decision.
+
+## 2026-07-28: Local-Only GitHub Project Selection
+
+**Decision:** Configure GitHub-backed portfolio and featured projects through an authenticated local terminal selector. Repository inventory and selection state must not be exposed through the deployed static site or committed configuration.
+
+**Changes:**
+
+- Added `npm run sync:configure`, which uses the authenticated `GET /user/repos` endpoint with pagination.
+- GitHub CLI authentication is preferred; `GITHUB_TOKEN` is accepted only from the process environment. The scripts never persist or print a token.
+- Private repository names are filtered before display and storage. Only public repositories can be selected, and the fetch stage independently refuses private repositories.
+- Replaced committed repository selection with `.featured-repos.local.json`, a gitignored, atomically written mode-`0600` file. The intermediate cache receives the same local protection.
+- The selector updates `featured` in existing project Markdown, clears it for deselected repositories, and preserves local overrides for retained selections.
+- Kept an empty committed example file for schema discovery without revealing an account's selected repositories.
+
+**Rationale:**
+
+- The portfolio is a static export; putting a GitHub token or private repository picker in browser code would expose the credential or require a forbidden backend.
+- The GitHub repository endpoint returns data according to the authenticated user's access. Filtering before display/storage prevents the unselected private inventory from entering logs, configuration, cache, content, or the client bundle.
+- Generated Markdown remains the reviewed public source of truth, so CI and deployment do not need GitHub account access.
+
+**Trade-offs:**
+
+- Configuration is intentionally per-machine and must be recreated through the selector on a new workstation.
+- Only public repositories can use automated GitHub-backed generation. A private project requires a separately reviewed, sanitized case study.
+- A featured public repository is necessarily visible in committed Markdown and on the deployed portfolio.
+- Gitignore prevents future disclosure but does not erase repository names already present in Git history; history rewriting is a separate destructive operation.
+
+## 2026-07-28: Tailscale-Private Unified Authoring Server
+
+**Decision:** Replace Pages CMS and the terminal-only GitHub selector with one local authoring server exposed through tailnet-only Tailscale Serve. This supersedes the Pages CMS decisions and the earlier Local-Only GitHub Project Selection interface while retaining the static production architecture.
+
+**Changes:**
+
+- Removed `.pages.yml` and the interactive repository-selection CLI.
+- Added a loopback-only Node authoring server, a Tailwind browser workspace, a hardened persistent user service, and a dedicated Tailscale Serve endpoint.
+- Authorized requests through Tailscale Serve's stripped-and-injected identity header with an exact user allowlist. Mutations also require an exact HTTPS origin, JSON content type, and per-process CSRF token.
+- Added no-store repository inventory, public-only selection/feature controls, ordering, overrides, and fixed fetch/generate/check jobs. Private repositories are visible only to the authorized owner and are rejected from publication server-side.
+- Added editing for every Markdown content document, validated project creation, recoverable project deletion, and signature-checked image uploads.
+- Made every content write transactional: global validation failure restores the previous file.
+
+**Rationale:**
+
+- Remote browser access over the tailnet removes the need to SSH for routine portfolio operations without exposing GitHub credentials, repository inventory, or authoring APIs to the public internet.
+- Tailscale Serve supplies encrypted tailnet transport, ACL enforcement, HTTPS, and authenticated identity headers while the backend remains inaccessible from the LAN or tailnet directly.
+- One repository-native authoring surface can preserve the full Markdown schema—including nested frontmatter and 3D orbit settings—without maintaining an external CMS application or GitHub App grant.
+- Keeping authoring separate from Next.js preserves static export, content review, and GitHub Pages deployment.
+
+**Trade-offs:**
+
+- Dungeon and its user service must be online for browser authoring.
+- Initial Tailscale Serve operator setup requires one privileged machine command.
+- The frontmatter editor favors complete schema flexibility over type-specific visual forms.
+- Local authoring changes still require review and a Git commit before deployment.
+- Other processes running as the same OS user remain inside the trust boundary, consistent with Tailscale's guidance for identity-header backends bound to localhost.

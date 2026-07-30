@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import posthog from 'posthog-js';
 import type { ContentItem, ProjectFrontmatter } from '@/content/content-types';
 import ProjectCard from './ProjectCard';
 
@@ -18,17 +17,14 @@ export default function ProjectFilterGrid({ projects, allTags }: ProjectFilterGr
       const next = new Set(prev);
       if (next.has(tag)) {
         next.delete(tag);
-        posthog.capture('project_tag_toggled', { tag, action: 'remove', active_count: next.size });
       } else {
         next.add(tag);
-        posthog.capture('project_tag_toggled', { tag, action: 'add', active_count: next.size });
       }
       return next;
     });
   };
 
   const clearTags = () => {
-    posthog.capture('project_tags_cleared', { previous_count: activeTags.size });
     setActiveTags(new Set());
   };
 

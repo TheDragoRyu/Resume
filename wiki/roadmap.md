@@ -1,29 +1,71 @@
 # Roadmap and Known Work
 
-This is the canonical inventory of unfinished work as of 2026-07-27. It combines known issues found in the current site, production-readiness gaps, optional enhancements recorded in the product standards, and ongoing maintenance responsibilities.
+This is the canonical inventory and recommended delivery sequence for unfinished work as of 2026-07-28. It combines known issues found in the current site, production-readiness gaps, optional enhancements recorded in the product standards, and ongoing maintenance responsibilities.
 
-It is an inventory, not a delivery schedule.
+The sequence below communicates product and engineering priority, not delivery dates. Optional enhancements remain uncommitted unless user evidence or product needs justify promoting them.
 
 ## Current status
 
 - The required application routes and static-export architecture are implemented.
-- All 8 current Markdown files pass the existing content validator.
+- All 9 current Markdown files pass content schema, internal-link, and local-media validation.
 - Contact fields, email format, HTTPS social links, and the empty Contact body are validated before builds.
 - The deployed Home and Resume routes respond successfully.
-- The current application completes the production static build successfully.
+- The current application completes lint, automated tests, content validation, and the production static build successfully.
+- Markdown routes, inline local media, metadata, sitemap, robots, and structured images share deployment-safe base-path handling.
+- Production analytics is intentionally disabled and no analytics SDK ships to visitors.
 - There are no code `TODO`, `FIXME`, or `TBD` markers.
 - There were no open GitHub issues or pull requests at the time of review.
+
+## Recommended delivery sequence
+
+### 1. Make content links deployment-safe — completed
+
+Treat the two high-priority link items as one workstream:
+
+1. make root-relative links in Markdown bodies work locally and under the GitHub Pages repository base path; and
+2. extend build validation to reject unresolved internal links and missing inline local assets.
+
+This is the first priority because it prevents production navigation failures and keeps future content changes from silently introducing broken links or media.
+
+### 2. Add linting and focused automated tests — completed
+
+Add documented lint and test commands and run them in CI. Initial coverage should focus on:
+
+- content mapping and validation;
+- Markdown link and asset handling;
+- scene-graph construction;
+- route and metadata generation;
+- project filtering; and
+- critical keyboard and fallback interactions.
+
+This safety net should be in place before broader feature work.
+
+### 3. Strengthen project case studies — awaiting evidence
+
+Add truthful, specific outcomes to each project where evidence is available. Useful outcomes include scale, performance, delivery impact, responsibilities, technical constraints, and clearly stated learning outcomes.
+
+This remains the highest-value content improvement for recruiters and hiring managers. Implementation is gated on user-supplied facts so no metrics or outcomes are invented.
+
+### 4. Decide the production analytics policy — completed
+
+Production analytics is intentionally disabled. PostHog, custom event calls, analytics environment variables, and analytics promises have been removed while all underlying interactions remain available.
+
+### 5. Add demos and write-ups opportunistically
+
+Add demo and write-up links only when polished, accurate, public resources exist. GitHub-only links remain acceptable when no strong additional destination is available.
+
+### Deferred optional enhancements
+
+Do not prioritize search, a dedicated featured-project section, a theme toggle, or additional performance controls without evidence that they solve a visitor problem. A solar-system legend or mini-map is the strongest candidate among the optional enhancements, but it should follow usability feedback showing that the existing hint and labels are insufficient.
 
 ## Known issues: content and navigation
 
 ### Make Markdown internal links base-path aware
 
-- **Status:** Known issue
+- **Status:** Resolved
 - **Priority:** High
 
-Markdown bodies are converted to raw HTML. Root-relative links such as `/projects/example` bypass Next.js base-path handling on the GitHub Pages `/Resume` deployment.
-
-Adopt a content-link convention or transformation that produces deployment-safe links without sacrificing local development.
+Markdown links and images now pass through the shared deployment URL resolver. Authors keep root-relative source values, and production builds add `/Resume` exactly once.
 
 **Complete when:** internal links work both at `/` locally and under the production repository base path.
 
@@ -31,30 +73,28 @@ Adopt a content-link convention or transformation that produces deployment-safe 
 
 ### Validate internal links and embedded local assets during the build
 
-- **Status:** Planned
+- **Status:** Resolved
 - **Priority:** High
 
-The validator now checks configured profile and project-cover image paths, allowed image extensions, missing files, project-cover alt text, and structured Contact fields and links. It still does not inspect routes or images embedded inside rich Markdown bodies. Extend validation so nonexistent project slugs and broken inline media fail before deployment.
+The validator checks structured images plus Markdown links and images. Unknown fixed routes, nonexistent project slugs, invalid Resume anchors, unsafe paths, unsupported schemes, and missing local media fail before deployment.
 
 **Complete when:** validation rejects unresolved internal links and missing local assets anywhere in content.
 
-### Enable PostHog in the deployment build
+### Production analytics intentionally disabled
 
-- **Status:** Planned
+- **Status:** Resolved
 - **Priority:** Medium
 
-The application expects `NEXT_PUBLIC_POSTHOG_KEY` and optionally `NEXT_PUBLIC_POSTHOG_HOST`, but the GitHub Pages workflow currently maps only the base path and site URL into `next build`.
+PostHog and its custom events were removed from the application and documentation. The production site ships no analytics SDK or analytics environment contract.
 
-Add the analytics variables to the build environment, configure them in the deployment environment, and verify pageview and custom-event delivery. If production analytics is not desired, update the project documentation to state that it is intentionally disabled.
-
-**Complete when:** production analytics is verified or explicitly removed from the promised deployment feature set.
+**Complete when:** resolved; analytics is explicitly outside the promised deployment feature set.
 
 ### Add dedicated lint and test commands
 
-- **Status:** Planned
+- **Status:** Resolved
 - **Priority:** Medium
 
-The current scripts validate content and run the Next.js build, but no dedicated lint or automated test command exists.
+Dedicated ESLint, Vitest, watch, and aggregate quality commands now run locally and in GitHub Actions before deployment.
 
 Add proportionate coverage for:
 
@@ -75,17 +115,15 @@ Add proportionate coverage for:
 Maintain correct GitHub deployment values for:
 
 - `NEXT_PUBLIC_BASE_PATH`;
-- `NEXT_PUBLIC_SITE_URL`;
-- `NEXT_PUBLIC_POSTHOG_KEY`, if analytics remains enabled; and
-- `NEXT_PUBLIC_POSTHOG_HOST`, when a non-default host is used.
+- `NEXT_PUBLIC_SITE_URL` as the site origin.
 
-After environment changes, verify absolute metadata URLs, sitemap entries, robots output, asset URLs, links, and analytics in the deployed site.
+After environment changes, verify absolute metadata URLs, sitemap entries, robots output, asset URLs, and links in the deployed site.
 
 ## Content quality improvements
 
 ### Add measurable results to project case studies
 
-- **Status:** Planned
+- **Status:** Awaiting user-supplied evidence
 - **Priority:** Medium
 
 The UX standard recommends Problem/Context, Approach, Results, Tech Stack, and Links. Current case studies provide Problem, Solution, Highlights, and Tech Stack, but generally lack measurable outcomes.
@@ -146,15 +184,14 @@ The UX standard permits a theme toggle “if present,” but does not require on
 
 When featuring a new repository:
 
-1. update `scripts/featured-repos.json` with a unique order and approved context;
-2. fetch repository metadata;
-3. inspect the cache;
-4. generate or manually write the Markdown;
-5. review the content;
-6. run validation and the production build; and
-7. commit the Markdown source.
+1. open the private Tailscale authoring server;
+2. select a public repository and configure its featured state and overrides;
+3. save, fetch, and generate through the fixed Build actions;
+4. review the generated Markdown in Site content;
+5. run the full quality gate from the authoring server; and
+6. review and commit only approved Markdown, media, and code changes.
 
-See the [runbook](../docs/RUNBOOK.md#syncing-github-projects) for commands and troubleshooting.
+See the [runbook](../docs/RUNBOOK.md#github-project-ingestion) for access, security, and troubleshooting.
 
 ### Keep decisions and wiki pages synchronized
 
@@ -165,6 +202,13 @@ See the [runbook](../docs/RUNBOOK.md#syncing-github-projects) for commands and t
 - Keep product standards stable unless the intended experience changes.
 
 ## Resolved historical items
+
+### July 28, 2026 engineering foundation
+
+- Markdown links and inline local media became base-path-aware and build-validated.
+- Site URL generation was unified across content, metadata, sitemap, and robots output.
+- ESLint, Vitest, interaction coverage, and pull-request quality gates were added.
+- PostHog and all analytics instrumentation were intentionally removed.
 
 The March 3 decision record initially deferred these items:
 
@@ -185,4 +229,4 @@ The previously recorded resume-content issues are resolved:
 - Experience now records the LILA and Audify roles supplied from LinkedIn, including progression to Senior Unity Engineer;
 - the placeholder employer and unresolved placeholder project links were removed; and
 - Contact now uses validated structured content for its introduction, email, social profiles, location, availability, metadata, and responsive visual cards; and
-- CMS-managed profile and project images now resolve under the GitHub Pages `/Resume` base path.
+- authoring-server-managed profile and project images now resolve under the GitHub Pages `/Resume` base path.

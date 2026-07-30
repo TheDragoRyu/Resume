@@ -98,7 +98,7 @@ If WebGL is unavailable, the scene becomes a readable grid of links to the same 
 
 The resume page provides:
 
-- a profile header with the resume title, candidate name, role, and an optional Pages CMS-managed image that resolves correctly on project-site base paths;
+- a profile header with the resume title, candidate name, role, and an optional authoring-server-managed image that resolves correctly on project-site base paths;
 - a desktop sticky table of contents;
 - an active-section highlight as the visitor scrolls;
 - a collapsible mobile “Jump to section” menu;
@@ -114,7 +114,7 @@ The current Experience content records progression from Unity Developer to Senio
 
 The projects page provides:
 
-- a Pages CMS-managed page title, introduction, search description, and social description;
+- a authoring-server-managed page title, introduction, search description, and social description;
 - a responsive project-card grid;
 - title, summary, tags, featured state, and an optional accessible cover image on each card;
 - featured projects ordered before other matching projects;
@@ -178,13 +178,6 @@ The site provides:
 - generated robots rules; and
 - static HTML for resume and project content.
 
-## Engagement measurement
+## Analytics policy
 
-When PostHog is configured, the site measures pageviews and interactions with:
-
-- landing-page calls to action;
-- resume section visibility and TOC selection;
-- project filters, cards, and external project links; and
-- 3D selection, exploration, navigation actions, and hint dismissal.
-
-Analytics failure does not block content or navigation.
+The production site intentionally ships without an analytics SDK, tracking cookies, pageview collection, or custom interaction events. Navigation, filtering, resume observation, and 3D interactions operate independently of third-party telemetry. Reintroducing analytics requires a new product and architecture decision.

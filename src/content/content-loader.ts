@@ -3,6 +3,7 @@ import path from 'path';
 import matter from 'gray-matter';
 import { remark } from 'remark';
 import remarkHtml from 'remark-html';
+import { resolveSitePath } from '../utils/site-url';
 import type {
   BaseFrontmatter,
   CategoryFrontmatter,
@@ -16,22 +17,6 @@ import type {
 } from './content-types';
 
 const DATA_DIR = path.join(process.cwd(), 'src', 'data');
-
-/** Prefix local public assets with the configured deployment base path */
-function resolvePublicAssetPath(value: string): string {
-  const basePath = (process.env.NEXT_PUBLIC_BASE_PATH || '').replace(/\/+$/, '');
-
-  if (
-    !basePath ||
-    !value.startsWith('/') ||
-    value === basePath ||
-    value.startsWith(`${basePath}/`)
-  ) {
-    return value;
-  }
-
-  return `${basePath}${value}`;
-}
 
 /** Map content-managed local asset paths to deployment-safe URLs */
 function resolveContentAssetPaths<T extends BaseFrontmatter>(
@@ -47,7 +32,7 @@ function resolveContentAssetPaths<T extends BaseFrontmatter>(
       ...item,
       frontmatter: {
         ...intro,
-        photo: resolvePublicAssetPath(intro.photo),
+        photo: resolveSitePath(intro.photo, process.env.NEXT_PUBLIC_BASE_PATH),
       },
     };
   }
@@ -60,12 +45,51 @@ function resolveContentAssetPaths<T extends BaseFrontmatter>(
       ...item,
       frontmatter: {
         ...project,
-        image: resolvePublicAssetPath(project.image),
+        image: resolveSitePath(project.image, process.env.NEXT_PUBLIC_BASE_PATH),
       },
     };
   }
 
   return item;
+}
+
+interface MarkdownUrlNode {
+  type?: string;
+  url?: string;
+  children?: MarkdownUrlNode[];
+}
+
+function rewriteMarkdownUrls(
+  node: MarkdownUrlNode,
+  basePath: string | undefined
+): void {
+  if (
+    (node.type === 'link' || node.type === 'image') &&
+    typeof node.url === 'string'
+  ) {
+    node.url = resolveSitePath(node.url, basePath);
+  }
+
+  node.children?.forEach((child) => rewriteMarkdownUrls(child, basePath));
+}
+
+function deploymentSafeMarkdownPlugin(options?: { basePath?: string }) {
+  return (tree: MarkdownUrlNode) => {
+    rewriteMarkdownUrls(tree, options?.basePath);
+  };
+}
+
+/** Render Markdown while making root-relative links safe for subpath hosting. */
+export async function renderMarkdown(
+  content: string,
+  basePath: string | undefined = process.env.NEXT_PUBLIC_BASE_PATH
+): Promise<string> {
+  const result = await remark()
+    .use(deploymentSafeMarkdownPlugin, { basePath })
+    .use(remarkHtml)
+    .process(content);
+
+  return result.toString();
 }
 
 /** Recursively find all .md files under a directory */
@@ -90,11 +114,10 @@ async function parseMarkdownFile<T extends BaseFrontmatter>(
 ): Promise<ContentItem<T>> {
   const raw = fs.readFileSync(filePath, 'utf-8');
   const { data, content } = matter(raw);
-  const result = await remark().use(remarkHtml).process(content);
 
   return {
     frontmatter: data as T,
-    body: result.toString(),
+    body: await renderMarkdown(content),
     rawContent: content,
   };
 }

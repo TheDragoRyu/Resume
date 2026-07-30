@@ -6,6 +6,10 @@
   "scripts": {
     "dev": "next dev",
     "validate": "tsx scripts/validate-content.ts",
+    "lint": "eslint . --max-warnings=0",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check": "npm run lint && npm run test && npm run build",
     "prebuild": "npm run validate",
     "build": "next build",
     "start": "npx serve out",
@@ -13,14 +17,15 @@
     "deploy:test": "fuser -k 4000/tcp 2>/dev/null; npm run build && npx serve out --listen tcp://0.0.0.0:4000",
     "sync:fetch": "tsx scripts/sync-github-projects.ts",
     "sync:generate": "tsx scripts/generate-project-content.ts",
-    "sync-projects": "npm run sync:fetch && npm run sync:generate"
+    "sync-projects": "npm run sync:fetch && npm run sync:generate",
+    "config:styles": "tailwindcss -i scripts/project-admin/admin.source.css -o scripts/project-admin/admin.css --minify",
+    "config:server": "npm run config:styles && tsx scripts/project-admin-server.ts"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.0",
     "@react-three/fiber": "^9.5.0",
     "gray-matter": "^4.0.3",
     "next": "^15.1.0",
-    "posthog-js": "^1.359.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "remark": "^15.0.1",
@@ -28,14 +33,22 @@
     "three": "^0.171.0"
   },
   "devDependencies": {
+    "@tailwindcss/cli": "^4.3.3",
     "@tailwindcss/postcss": "^4.0.0",
     "@tailwindcss/typography": "^0.5.19",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@types/three": "^0.171.0",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^15.5.12",
+    "jsdom": "^26.1.0",
     "tailwindcss": "^4.0.0",
     "tsx": "^4.19.0",
-    "typescript": "^5.7.0"
+    "typescript": "^5.7.0",
+    "vitest": "^4.1.10"
   }
 }

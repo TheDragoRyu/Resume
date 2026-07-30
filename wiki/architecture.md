@@ -2,7 +2,7 @@
 
 ## System overview
 
-The Resume Website is a statically exported Next.js application. Markdown is the content source of truth; build-time loaders turn that content into typed page data, conventional navigation, and a 3D scene graph. The browser receives static HTML and JavaScript, then progressively loads interactive features such as filtering, responsive menus, analytics, and the Three.js scene.
+The Resume Website is a statically exported Next.js application. Markdown is the content source of truth; build-time loaders turn that content into typed page data, conventional navigation, and a 3D scene graph. The browser receives static HTML and JavaScript, then progressively loads interactive features such as filtering, responsive menus, and the Three.js scene.
 
 ```mermaid
 flowchart LR
@@ -28,9 +28,8 @@ There is no application server after deployment.
 | Language | Strict TypeScript | Build |
 | Styling | Tailwind CSS 4, typography plugin, theme tokens, and global visual effects | Build and browser |
 | Content | Markdown, YAML frontmatter, `gray-matter`, and `remark` | Build |
-| Content editing | Pages CMS configuration over GitHub-authenticated commits | Authoring only |
+| Content editing | Identity-gated loopback server through Tailscale Serve | Authoring only |
 | 3D | Three.js, React Three Fiber, and `@react-three/drei` | Browser only |
-| Analytics | PostHog JS with custom engagement events | Browser only, when configured |
 | Hosting | Next.js static export on GitHub Pages | Deployment |
 | Project ingestion | GitHub REST metadata plus optional Claude CLI generation | Developer workstation |
 
@@ -69,7 +68,7 @@ The mandatory boundaries and naming rules are defined in [CLAUDE.md](../CLAUDE.m
 - an environment-controlled base path; and
 - unoptimized Next images, which are compatible with static export.
 
-The root layout reads navigation data at build time, provides the semantic header/main/footer shell, and wraps browser interactions with the optional analytics provider.
+The root layout reads navigation data at build time and provides the semantic header/main/footer shell.
 
 ## Content model and validation
 
@@ -90,7 +89,7 @@ Content types add their own fields:
 - projects page: required description and introduction plus optional planet orbit values; and
 - contact page: required description, introduction, email card, social-link list, location, and availability fields.
 
-The loader recursively reads `src/data/`, parses frontmatter, renders Markdown where present, sorts records by `order`, and provides typed queries for routes and navigation. Required Contact and Projects-page loaders supply page copy, metadata, navigation labels, and scene data from typed records. Typed queries also prefix CMS-managed profile and project-cover paths with the configured deployment base path without changing their Markdown source values.
+The loader recursively reads `src/data/`, parses frontmatter, renders Markdown where present, sorts records by `order`, and provides typed queries for routes and navigation. Required Contact and Projects-page loaders supply page copy, metadata, navigation labels, and scene data from typed records. Typed queries and rendered Markdown share one idempotent URL resolver that prefixes internal routes and local media with the configured deployment base path without changing their Markdown source values.
 
 The validator rejects:
 
@@ -105,23 +104,33 @@ The validator rejects:
 - Projects pages with missing structured copy or Markdown body content;
 - Contact pages with missing structured fields, invalid email addresses, non-HTTPS social links, or Markdown body content;
 - profile or project images outside `/images/`, with unsafe extensions, or missing from `public/images`; and
-- project cover images without alternative text.
+- project cover images without alternative text;
+- Markdown links to unknown routes or Resume anchors, unsafe relative paths, or unsupported URL schemes; and
+- Markdown images outside `/images/`, with unsafe extensions, or missing from `public/images`.
 
-`npm run build` runs the validator first through `prebuild`. Links and images embedded directly inside Markdown bodies are not yet validated; this is tracked in the [roadmap](roadmap.md).
+`npm run build` runs the validator first through `prebuild`. Internal content routes are checked against fixed routes, generated project slugs, and Resume section anchors before static export.
 
 ## Content editing
 
-`.pages.yml` maps the content types to an authenticated visual editor at Pages CMS:
+The private authoring server is deliberately outside the deployed application:
 
-- Profile, Contact, Projects page, and the existing Resume sections protect fixed files from creation, rename, and deletion.
-- Contact exposes dedicated controls for page metadata, introductory copy, the email card, a reorderable list of HTTPS social links, and the location card.
-- Projects page exposes the title, search/social description, and index introduction shared by the route and its dedicated scene planet.
-- Project entries can be created and deleted, but not renamed; category selection uses a reference to the Resume collection.
-- Resume and project rich-text fields edit Markdown without requiring maintainers to open the source files; the structured Contact and Projects page records keep their bodies empty.
-- Image uploads are restricted to AVIF, JPEG, PNG, and WebP under `public/images`.
-- `settings.content.merge` preserves technical frontmatter such as IDs, types, slugs, icons, and 3D orbit settings when it is not exposed by a form.
+```mermaid
+flowchart LR
+    A["Owner device"] -->|"WireGuard + tailnet ACL"| B["Tailscale Serve HTTPS"]
+    B -->|"identity headers"| C["127.0.0.1:4180<br/>authoring server"]
+    C --> D["src/data/**/*.md"]
+    C --> E["public/images"]
+    C --> F["GitHub REST API"]
+    C --> G["fixed fetch/generate/check jobs"]
+    D --> H["validation + Git review"]
+    E --> H
+    G --> H
+    H --> I["static build and deployment"]
+```
 
-Pages CMS writes ordinary Git commits to the selected branch. GitHub Actions then validates and statically exports the site. The deployed website contains no CMS runtime, authentication code, content API, or secret.
+The backend binds only to loopback and requires an exact Tailscale user identity, same-origin requests, and CSRF protection. Repository credentials stay in the server process. Inventory responses are no-store; private repositories can be viewed by the owner but are blocked from publication at both UI and API boundaries.
+
+The content workspace edits every Markdown record, creates and recoverably deletes project records, uploads validated images, and rolls back writes that fail global content validation. It preserves `src/data/` as the only public content source and produces ordinary Git changes. The server, its APIs, local configuration, repository inventory, and credentials are never included in `out/`.
 
 ## Shared content projections
 
@@ -180,9 +189,8 @@ Client components provide:
 - active resume-section observation;
 - tag filtering and featured-first project ordering;
 - the 3D navigation state machine and context panel;
-- onboarding-hint persistence in session storage;
-- performance-mode persistence in local storage; and
-- PostHog pageview and engagement events.
+- onboarding-hint persistence in session storage; and
+- performance-mode persistence in local storage.
 
 The content and route payloads themselves remain statically generated.
 
@@ -202,52 +210,44 @@ The 3D layer respects:
 
 The detailed interaction contract lives in [UX patterns and standards](ux-standards.md).
 
-## Analytics
-
-The PostHog provider no-ops when `NEXT_PUBLIC_POSTHOG_KEY` is absent. When configured, it records route pageviews and 12 custom events covering:
-
-- hero calls to action;
-- resume section views and TOC use;
-- project filtering, card selection, and outbound links; and
-- scene selection, exploration, navigation, and hint dismissal.
-
-No backend analytics endpoint is part of this repository. The current deployment configuration gap is documented in the [roadmap](roadmap.md).
-
 ## Project content sync pipeline
 
-The optional project-authoring pipeline is separate from the website runtime:
+The optional project-authoring pipeline is invoked from the private server and remains separate from the website runtime:
 
 ```mermaid
 flowchart LR
-    A["scripts/featured-repos.json"] --> B["sync-github-projects.ts"]
-    B --> C[".project-cache.json<br/>gitignored"]
-    C --> D["generate-project-content.ts<br/>Claude CLI"]
-    D --> E["src/data/projects/*.md"]
-    E --> F["Human review"]
-    F --> G["Validate, build, and commit"]
+    A["Authorized Tailscale browser"] --> B["Authoring server"]
+    B --> C["GitHub /user/repos<br/>no-store inventory"]
+    C --> D["Public selections only"]
+    D --> E[".featured-repos.local.json<br/>gitignored, mode 0600"]
+    E --> F["sync-github-projects.ts"]
+    F --> G[".project-cache.json<br/>gitignored, mode 0600"]
+    G --> H["generate-project-content.ts<br/>Claude CLI"]
+    H --> I["src/data/projects/*.md"]
+    I --> J["Validation, review, and commit"]
 ```
 
-The fetch stage uses the GitHub REST API. The generation stage creates deterministic frontmatter and AI-assisted case-study copy. Existing files are protected unless explicitly forced, locked entries cannot be overwritten, forced updates retain editor-managed cover media, and failed validation restores the previous file. Generated Markdown becomes ordinary committed source content after human review.
+The owner can inspect private repository names inside the authenticated no-store session, but private entries are disabled in the UI and rejected again during save and fetch. Existing Markdown is protected unless generation is explicitly forced, locked entries cannot be overwritten, forced updates retain editor-managed cover media, and failed validation restores the previous file.
 
-See the [runbook](../docs/RUNBOOK.md#syncing-github-projects) for commands and failure recovery.
+See the [runbook](../docs/RUNBOOK.md#github-project-ingestion) for access and failure recovery.
 
 ## Build and deployment
 
 The GitHub Actions workflow:
 
-1. checks out `main`;
-2. installs Node.js 20 dependencies with `npm ci`;
-3. validates Markdown;
-4. creates the static export;
-5. uploads `out/`; and
-6. deploys the artifact to GitHub Pages.
+1. checks out pull requests, `main`, or a manual run;
+2. installs Node.js 22 dependencies with `npm ci`;
+3. runs ESLint with zero warnings;
+4. runs focused Vitest coverage;
+5. validates Markdown and creates the static export; and
+6. uploads and deploys `out/` only outside pull requests.
 
 The deployment build accepts:
 
 - `NEXT_PUBLIC_BASE_PATH` for repository-subdirectory hosting; and
-- `NEXT_PUBLIC_SITE_URL` for absolute metadata URLs, sitemap, and robots output.
+- `NEXT_PUBLIC_SITE_URL` as the origin for absolute metadata URLs, sitemap, and robots output.
 
-PostHog also expects `NEXT_PUBLIC_POSTHOG_KEY` and optionally `NEXT_PUBLIC_POSTHOG_HOST`; these are used by the application but are not yet mapped into the deployment build.
+Analytics is intentionally disabled; the build accepts no analytics keys or hosts.
 
 ## Decision history
 

@@ -1,6 +1,5 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import TrackClick from '@/components/ui/TrackClick';
 
 interface ProjectCardProps {
   slug: string;
@@ -22,7 +21,6 @@ export default function ProjectCard({
   featured,
 }: ProjectCardProps) {
   return (
-    <TrackClick event="project_card_clicked" properties={{ project: slug, featured }}>
       <article
         className={`group rounded-xl border bg-surface-raised p-6 transition-all hover:border-glow-cyan ${
           featured ? 'border-neon-pink/30' : 'border-accent/10'
@@ -65,6 +63,5 @@ export default function ProjectCard({
         </div>
       )}
       </article>
-    </TrackClick>
   );
 }
