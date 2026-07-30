@@ -133,21 +133,30 @@ const CLEANUP_SIGNALS = ['SIGINT', 'SIGTERM', 'SIGHUP'] as const;
 const activeSandboxes = new Set<GenerationSandbox>();
 let cleanupRegistered = false;
 
-/** Best effort by design: cleanup runs while the process is already exiting. */
+/**
+ * Untracks the sandbox only once its directory is actually gone, so a failed
+ * removal stays registered for the exit and signal handlers to retry.
+ */
 function removeSandboxDirectory(sandbox: GenerationSandbox): void {
-  try {
-    fs.rmSync(sandbox.root, { recursive: true, force: true });
-  } catch {
-    // Nothing useful can be done here; the sandbox is under the OS temp root.
-  }
+  fs.rmSync(sandbox.root, { recursive: true, force: true });
+  activeSandboxes.delete(sandbox);
 }
 
-/** Idempotent: a removed sandbox is untracked, and `rmSync` forces the rest. */
+/**
+ * The retry path. It runs while the process is already exiting, so a removal
+ * failure is reported and left tracked rather than raised: cleanup must not turn
+ * a normal failure into a crash or change the exit code.
+ */
 function destroyTrackedSandboxes(): void {
-  for (const sandbox of activeSandboxes) {
-    removeSandboxDirectory(sandbox);
+  for (const sandbox of [...activeSandboxes]) {
+    try {
+      removeSandboxDirectory(sandbox);
+    } catch (error) {
+      console.error(
+        `Could not remove the generation sandbox ${sandbox.root}: ${error}`
+      );
+    }
   }
-  activeSandboxes.clear();
 }
 
 function registerSandboxCleanup(): void {
@@ -185,9 +194,9 @@ export function createGenerationSandbox(): GenerationSandbox {
   return sandbox;
 }
 
+/** Idempotent: `rmSync` forces a missing root, and untracking is a no-op twice. */
 export function destroyGenerationSandbox(sandbox: GenerationSandbox): void {
-  activeSandboxes.delete(sandbox);
-  fs.rmSync(sandbox.root, { recursive: true, force: true });
+  removeSandboxDirectory(sandbox);
 }
 
 function hostClaudeConfigDirectory(): string {

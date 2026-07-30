@@ -262,29 +262,26 @@ describe('generation worker privilege reduction', () => {
     }
   });
 
-  // The sandbox holds a copy of the operator's Claude credential, so an
-  // interrupted run must not leave it on disk. `main`'s `finally` block never
-  // runs when the process is signalled.
-  it('removes the sandbox and its credential when the run is interrupted', async () => {
+  /**
+   * Runs `body` in a child process against the real worker module. The child is
+   * the only way to observe process-level sandbox cleanup: `exit` and signal
+   * handlers do not fire inside the test runner.
+   */
+  function spawnSandboxRunner(name: string, body: string) {
     const workerModule = pathToFileURL(
       path.join(REPO_ROOT, 'scripts', 'generation-worker.ts')
     ).href;
-    const runner = path.join(stubDirectory, 'interrupted-run.mts');
+    const runner = path.join(stubDirectory, name);
     fs.writeFileSync(
       runner,
       `import fs from 'node:fs';
 import path from 'node:path';
-import { createGenerationSandbox } from ${JSON.stringify(workerModule)};
-
-const sandbox = createGenerationSandbox();
-fs.writeFileSync(
-  path.join(sandbox.configDir, '.credentials.json'),
-  '{"token":"must-not-survive"}',
-  { mode: 0o600 }
-);
-process.stdout.write(sandbox.root + '\\n');
-setInterval(() => {}, 1000);
-`
+import {
+  createGenerationSandbox,
+  destroyGenerationSandbox,
+} from ${JSON.stringify(workerModule)};
+void destroyGenerationSandbox;
+${body}`
     );
 
     // Run from the repository root so `--import tsx` resolves against it.
@@ -299,7 +296,7 @@ setInterval(() => {}, 1000);
       diagnostics += chunk;
     });
 
-    const sandboxRoot = await new Promise<string>((resolve, reject) => {
+    const reported = new Promise<string>((resolve, reject) => {
       let buffered = '';
       child.stdout.setEncoding('utf8');
       child.stdout.on('data', (chunk: string) => {
@@ -313,17 +310,82 @@ setInterval(() => {}, 1000);
       );
     });
 
-    expect(fs.existsSync(path.join(sandboxRoot, 'claude-config', '.credentials.json'))).toBe(true);
-
     const exit = new Promise<number | null>((resolve) => {
       child.on('exit', (code) => resolve(code));
     });
+
+    return { child, reported, exit };
+  }
+
+  // The sandbox holds a copy of the operator's Claude credential, so an
+  // interrupted run must not leave it on disk. `main`'s `finally` block never
+  // runs when the process is signalled.
+  it('removes the sandbox and its credential when the run is interrupted', async () => {
+    const { child, reported, exit } = spawnSandboxRunner(
+      'interrupted-run.mts',
+      `const sandbox = createGenerationSandbox();
+fs.writeFileSync(
+  path.join(sandbox.configDir, '.credentials.json'),
+  '{"token":"must-not-survive"}',
+  { mode: 0o600 }
+);
+process.stdout.write(sandbox.root + '\\n');
+setInterval(() => {}, 1000);
+`
+    );
+
+    const sandboxRoot = await reported;
+    expect(
+      fs.existsSync(path.join(sandboxRoot, 'claude-config', '.credentials.json'))
+    ).toBe(true);
+
     child.kill('SIGINT');
 
     // The signal is handled, not swallowed: the runner still reports 128 + SIGINT.
     expect(await exit).toBe(128 + os.constants.signals.SIGINT);
     expect(fs.existsSync(sandboxRoot)).toBe(false);
   }, 30_000);
+
+  // A sandbox whose removal failed must stay tracked so the exit handler retries
+  // it. Untracking before the removal succeeds silently drops that retry and
+  // leaves the credential behind. Root ignores the mode bits that force failure.
+  it.skipIf(process.getuid?.() === 0)(
+    'retries a sandbox whose removal failed instead of dropping it',
+    async () => {
+      const { reported, exit } = spawnSandboxRunner(
+        'failed-removal.mts',
+        `const sandbox = createGenerationSandbox();
+fs.writeFileSync(
+  path.join(sandbox.configDir, '.credentials.json'),
+  '{"token":"must-not-survive"}',
+  { mode: 0o600 }
+);
+
+fs.chmodSync(sandbox.root, 0o500);
+let threw = false;
+try {
+  destroyGenerationSandbox(sandbox);
+} catch {
+  threw = true;
+}
+fs.chmodSync(sandbox.root, 0o700);
+
+process.stdout.write(JSON.stringify({ root: sandbox.root, threw }) + '\\n');
+process.exit(1);
+`
+      );
+
+      const report = JSON.parse(await reported) as {
+        root: string;
+        threw: boolean;
+      };
+
+      expect(report.threw).toBe(true);
+      expect(await exit).toBe(1);
+      expect(fs.existsSync(report.root)).toBe(false);
+    },
+    30_000
+  );
 });
 
 describe('generation worker tool attestation', () => {

@@ -177,7 +177,15 @@ export function writeProjectFile(filePath: string, contents: string): void {
   }
 }
 
-export function removeProjectFile(filePath: string): void {
-  if (assertSafeProjectFile(filePath) === 'missing') return;
-  fs.rmSync(filePath, { force: true });
+/** Returns whether a file was actually removed, as reported by the removal. */
+export function removeProjectFile(filePath: string): boolean {
+  assertSafeProjectFile(filePath);
+
+  try {
+    fs.unlinkSync(filePath);
+    return true;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return false;
+    throw error;
+  }
 }

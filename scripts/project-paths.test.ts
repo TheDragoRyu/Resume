@@ -7,6 +7,7 @@ import {
   assertSafeProjectFile,
   isProjectSlug,
   projectsDirectory,
+  removeProjectFile,
   resolveProjectFilePath,
   resolveProjectFilePathFromFilename,
   writeProjectFile,
@@ -117,6 +118,26 @@ describe('project file safety', () => {
     const directory = path.join(fixture, 'directory.md');
     fs.mkdirSync(directory);
     expect(() => assertSafeProjectFile(directory)).toThrow('regular file');
+  });
+
+  it('reports whether a removal actually deleted a file', () => {
+    const target = path.join(fixture, 'valid.md');
+    writeProjectFile(target, 'contents');
+
+    expect(removeProjectFile(target)).toBe(true);
+    expect(removeProjectFile(target)).toBe(false);
+    expect(fs.existsSync(target)).toBe(false);
+  });
+
+  it('refuses to remove a symbolic link', () => {
+    const outside = path.join(fixture, 'outside.md');
+    fs.writeFileSync(outside, 'original');
+    const link = path.join(fixture, 'link.md');
+    fs.symlinkSync(outside, link);
+
+    expect(() => removeProjectFile(link)).toThrow('symbolic link');
+    expect(fs.readFileSync(outside, 'utf8')).toBe('original');
+    expect(fs.lstatSync(link).isSymbolicLink()).toBe(true);
   });
 
   it('replaces a regular file atomically and leaves no temporary files', () => {

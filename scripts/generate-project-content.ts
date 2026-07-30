@@ -373,8 +373,7 @@ function restoreProjectTarget(
     if (previousContents !== undefined) {
       writeProjectFile(filePath, previousContents);
       console.error(`  Restored previous content: ${filePath}`);
-    } else {
-      removeProjectFile(filePath);
+    } else if (removeProjectFile(filePath)) {
       console.error(`  Removed invalid file: ${filePath}`);
     }
   } catch (err) {
