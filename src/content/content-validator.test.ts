@@ -44,7 +44,7 @@ describe('Markdown reference validation', () => {
         '[Resume](/resume#experience)',
         '[Project](/projects/example?from=resume)',
         '[External](https://example.com)',
-        '![Preview](/images/pasted-image-20260728020630.png)',
+        '![Preview](/images/profile_pic.png)',
       ].join('\n\n')
     );
 
