@@ -140,11 +140,13 @@ The **GitHub projects** area of the private authoring server replaces the former
 
 Repository descriptions, topics, and README text are untrusted prompt input, so `npm run sync:generate` runs the Claude CLI with the least authority that still produces text:
 
-- The child environment is built from the explicit allowlist in `scripts/generate-project-content.ts` (`GENERATION_ENV_ALLOWLIST`), never from `process.env`. GitHub, Tailscale, service-origin, and unrelated credentials are excluded by construction.
+- The child environment is built from the explicit allowlist in `scripts/generation-worker.ts` (`GENERATION_ENV_ALLOWLIST`), never from `process.env`. GitHub, Tailscale, service-origin, and unrelated credentials are excluded by construction.
 - `HOME` and `CLAUDE_CONFIG_DIR` point at a fresh mode-`0700` temporary directory. Only the single Claude credential file is copied in, so local settings, hooks, MCP configuration, plugins, memory files, and session history are unreachable.
 - The working directory is an empty temporary directory, so the worker has no repository read or write access.
 - Every tool category is disabled at the call site (`--tools ""`, `--setting-sources ""`, `--strict-mcp-config`, `--disable-slash-commands`, `--no-session-persistence`). The script then reads the CLI's own session-init report and refuses to use the output unless the worker confirms it has no tools, no MCP servers, and no slash commands.
 - The untrusted prompt is written to stdin and the answer is read from stdout. Nothing else is exchanged.
+- The sandbox is removed when the run ends, including when it is interrupted or terminated: `scripts/generation-worker.ts` registers `SIGINT`, `SIGTERM`, `SIGHUP`, and exit handlers so the copied credential does not survive under the OS temp root. If a sandbox is ever found there after a crash, delete `/tmp/portfolio-generate-*` and refresh the local Claude login.
+- One malformed repository or project file fails only its own target; the run continues with the remaining repositories.
 - Model output stays untrusted: sections are checked, frontmatter is serialized with a YAML library, scalars are type-checked and bounded, and every link must be an absolute HTTP or HTTPS URL.
 
 If generation reports that it is not logged in, refresh the local Claude login (`claude` then `/login`). The sandbox intentionally cannot see the operator's shell session.

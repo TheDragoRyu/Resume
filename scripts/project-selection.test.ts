@@ -11,7 +11,11 @@ import {
   updateFeaturedFrontmatter,
   type GitHubRepositorySummary,
 } from './project-selection';
-import { localConfigPath } from './project-sync-config';
+import {
+  localConfigPath,
+  writeFeaturedReposConfig,
+  type FeaturedReposFile,
+} from './project-sync-config';
 import { projectsDirectory } from './project-paths';
 
 const repositories: GitHubRepositorySummary[] = [
@@ -276,4 +280,61 @@ describe('featured update containment', () => {
     expect(fs.existsSync(localConfigPath())).toBe(false);
     expect(fs.readFileSync(outsideFile, 'utf8')).toBe(OUTSIDE_CONTENTS);
   });
+
+  // A read-only projects directory lets planning read every file but makes the
+  // commit's temporary write fail, which is the only way to reach the rollback
+  // after configuration has already been persisted. Root ignores the mode bits.
+  const asRoot = process.getuid?.() === 0;
+
+  function saveWithUnwritableProjects(
+    previous: FeaturedReposFile,
+    next: FeaturedReposFile
+  ): void {
+    const projects = projectsDirectory();
+    fs.chmodSync(projects, 0o500);
+    try {
+      expect(() => saveProjectConfiguration(previous, next)).toThrow();
+    } finally {
+      fs.chmodSync(projects, 0o700);
+    }
+  }
+
+  it.skipIf(asRoot)(
+    'restores the previous configuration when the content commit fails',
+    () => {
+      const previous = {
+        defaults,
+        repos: [{ repo: 'owner/example', order: 1 }],
+      };
+      writeFeaturedReposConfig(previous);
+      const persisted = fs.readFileSync(localConfigPath(), 'utf8');
+
+      saveWithUnwritableProjects(previous, {
+        defaults,
+        repos: [{ repo: 'owner/example', order: 1, featured: true }],
+      });
+
+      expect(fs.readFileSync(localConfigPath(), 'utf8')).toBe(persisted);
+      expect(
+        fs.readFileSync(path.join(projectsDirectory(), 'example.md'), 'utf8')
+      ).toContain('featured: false');
+    }
+  );
+
+  it.skipIf(asRoot)(
+    'removes the configuration it created when a first save fails',
+    () => {
+      expect(fs.existsSync(localConfigPath())).toBe(false);
+
+      saveWithUnwritableProjects(
+        { defaults, repos: [] },
+        {
+          defaults,
+          repos: [{ repo: 'owner/example', order: 1, featured: true }],
+        }
+      );
+
+      expect(fs.existsSync(localConfigPath())).toBe(false);
+    }
+  );
 });

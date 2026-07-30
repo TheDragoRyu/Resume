@@ -1,9 +1,11 @@
+import fs from 'node:fs';
 import type {
   FeaturedRepoConfig,
   FeaturedReposFile,
 } from './project-sync-config';
 import {
   getGitHubHeaders,
+  localConfigPath,
   writeFeaturedReposConfig,
 } from './project-sync-config';
 import {
@@ -246,16 +248,52 @@ export function applyFeaturedFlags(
   return commitFeaturedFlagUpdates(planFeaturedFlagUpdates(previous, next));
 }
 
+function describeError(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+/**
+ * Puts `.featured-repos.local.json` back the way it was found. A first save has
+ * no previous file, so the rollback removes the one this save created rather
+ * than leaving a selection nothing on disk agrees with.
+ */
+function restoreProjectConfiguration(
+  previous: FeaturedReposFile,
+  hadPreviousConfig: boolean
+): void {
+  if (hadPreviousConfig) {
+    writeFeaturedReposConfig(previous);
+    return;
+  }
+  fs.rmSync(localConfigPath(), { force: true });
+}
+
 /**
  * Persists a project selection. The complete plan is computed first so a bad
  * slug, an unsafe destination, or an unreadable project file rejects the whole
- * save before `.featured-repos.local.json` is rewritten.
+ * save before `.featured-repos.local.json` is rewritten. If a Markdown write
+ * still fails, the rolled-back content is matched by a rolled-back
+ * configuration, so the save is all-or-nothing.
  */
 export function saveProjectConfiguration(
   previous: FeaturedReposFile,
   next: FeaturedReposFile
 ): number {
   const updates = planFeaturedFlagUpdates(previous, next);
+  const hadPreviousConfig = fs.existsSync(localConfigPath());
+
   writeFeaturedReposConfig(next);
-  return commitFeaturedFlagUpdates(updates);
+
+  try {
+    return commitFeaturedFlagUpdates(updates);
+  } catch (error) {
+    try {
+      restoreProjectConfiguration(previous, hadPreviousConfig);
+    } catch (restoreError) {
+      throw new Error(
+        `${describeError(error)} — restoring the previous project selection also failed: ${describeError(restoreError)}`
+      );
+    }
+    throw error;
+  }
 }

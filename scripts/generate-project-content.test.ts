@@ -1,6 +1,8 @@
+import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import matter from 'gray-matter';
 import {
   afterAll,
@@ -12,24 +14,29 @@ import {
   it,
 } from 'vitest';
 import {
-  buildGenerationEnvironment,
-  buildGenerationInvocation,
   buildProjectDocument,
-  createGenerationSandbox,
   deriveLinks,
   deriveSlug,
+  planGenerationTargets,
+  type CachedRepo,
+} from './generate-project-content';
+import {
+  buildGenerationEnvironment,
+  buildGenerationInvocation,
+  createGenerationSandbox,
   destroyGenerationSandbox,
   GENERATION_ENV_ALLOWLIST,
   parseGenerationStream,
-  planGenerationTargets,
   runGenerationInvocation,
-  type CachedRepo,
   type GenerationSandbox,
-} from './generate-project-content';
+} from './generation-worker';
 import { projectsDirectory } from './project-paths';
 import type { FeaturedRepoConfig } from './project-sync-config';
 
 const defaults = { categoryId: 'cat-experience', featured: false };
+
+// Captured before any test changes the working directory.
+const REPO_ROOT = process.cwd();
 
 function cachedRepo(
   overrides: {
@@ -254,6 +261,69 @@ describe('generation worker privilege reduction', () => {
       expect(argv).not.toContain(dangerous);
     }
   });
+
+  // The sandbox holds a copy of the operator's Claude credential, so an
+  // interrupted run must not leave it on disk. `main`'s `finally` block never
+  // runs when the process is signalled.
+  it('removes the sandbox and its credential when the run is interrupted', async () => {
+    const workerModule = pathToFileURL(
+      path.join(REPO_ROOT, 'scripts', 'generation-worker.ts')
+    ).href;
+    const runner = path.join(stubDirectory, 'interrupted-run.mts');
+    fs.writeFileSync(
+      runner,
+      `import fs from 'node:fs';
+import path from 'node:path';
+import { createGenerationSandbox } from ${JSON.stringify(workerModule)};
+
+const sandbox = createGenerationSandbox();
+fs.writeFileSync(
+  path.join(sandbox.configDir, '.credentials.json'),
+  '{"token":"must-not-survive"}',
+  { mode: 0o600 }
+);
+process.stdout.write(sandbox.root + '\\n');
+setInterval(() => {}, 1000);
+`
+    );
+
+    // Run from the repository root so `--import tsx` resolves against it.
+    const child = spawn(process.execPath, ['--import', 'tsx', runner], {
+      cwd: REPO_ROOT,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+
+    let diagnostics = '';
+    child.stderr.setEncoding('utf8');
+    child.stderr.on('data', (chunk: string) => {
+      diagnostics += chunk;
+    });
+
+    const sandboxRoot = await new Promise<string>((resolve, reject) => {
+      let buffered = '';
+      child.stdout.setEncoding('utf8');
+      child.stdout.on('data', (chunk: string) => {
+        buffered += chunk;
+        const newline = buffered.indexOf('\n');
+        if (newline !== -1) resolve(buffered.slice(0, newline));
+      });
+      child.on('error', reject);
+      child.on('exit', () =>
+        reject(new Error(`runner exited before reporting:\n${diagnostics}`))
+      );
+    });
+
+    expect(fs.existsSync(path.join(sandboxRoot, 'claude-config', '.credentials.json'))).toBe(true);
+
+    const exit = new Promise<number | null>((resolve) => {
+      child.on('exit', (code) => resolve(code));
+    });
+    child.kill('SIGINT');
+
+    // The signal is handled, not swallowed: the runner still reports 128 + SIGINT.
+    expect(await exit).toBe(128 + os.constants.signals.SIGINT);
+    expect(fs.existsSync(sandboxRoot)).toBe(false);
+  }, 30_000);
 });
 
 describe('generation worker tool attestation', () => {

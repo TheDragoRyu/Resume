@@ -7,7 +7,11 @@ import {
   validateContent,
   type ValidationError,
 } from '../../src/content/content-validator';
-import { resolveProjectFilePathFromFilename } from '../project-paths';
+import {
+  removeProjectFile,
+  resolveProjectFilePathFromFilename,
+  writeProjectFile,
+} from '../project-paths';
 
 const DATA_DIR = path.resolve(process.cwd(), 'src', 'data');
 const PROJECTS_DIR = path.join(DATA_DIR, 'projects');
@@ -170,10 +174,12 @@ export async function createProjectDocument(
   }
 
   validateInput({ ...input, path: relativePath });
-  writeAtomic(destination, serialize({ ...input, path: relativePath }));
+  // Shared writer: rejects symbolic links and non-regular files for both
+  // existing and newly targeted paths, so every project sink holds the invariant.
+  writeProjectFile(destination, serialize({ ...input, path: relativePath }));
   const errors = await currentValidationErrors();
   if (errors.length > 0) {
-    fs.unlinkSync(destination);
+    removeProjectFile(destination);
     throw new Error(
       `Content validation failed: ${errors
         .slice(0, 8)

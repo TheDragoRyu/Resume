@@ -87,7 +87,7 @@ Every touched page must preserve:
 
 - Every writer of `src/data/projects/*.md` must resolve its destination through `scripts/project-paths.ts`. That module owns slug syntax, containment, symlink rejection, and atomic writes; do not join a slug into a path anywhere else.
 - A project selection save must resolve every target path before persisting `.featured-repos.local.json` (`saveProjectConfiguration` in `scripts/project-selection.ts`), so a later failure cannot leave configuration and content disagreeing.
-- Repository metadata and README text are untrusted prompt input. The generation subprocess must keep its environment allowlist, empty temporary HOME, empty working directory, and disabled tools. See `docs/RUNBOOK.md`, "Generation sandbox", and `docs/DECISIONS.md`, 2026-07-30.
+- Repository metadata and README text are untrusted prompt input. `scripts/generation-worker.ts` owns the subprocess boundary — environment allowlist, empty temporary HOME, empty working directory, disabled tools, runtime tool attestation, and sandbox removal on interrupt — and must keep all of them. See `docs/RUNBOOK.md`, "Generation sandbox", and `docs/DECISIONS.md`, 2026-07-30.
 
 ## Maintaining this file
 
